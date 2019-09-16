@@ -1,0 +1,827 @@
+---
+title: "CAViaR Analysis"
+author: "Steven Moen"
+date: "6/20/19"
+output: html_notebook
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+```
+
+# Original code
+
+```{r, eval = FALSE}
+# Start time
+start_time <- Sys.time()
+
+# Load in the data
+library(data.table)
+setwd("~/Documents/GitHub/CaviaR")
+source('caviar_SM.R')
+# install.packages("microbenchmark")
+library(microbenchmark)
+
+# Pulls in the log return data
+data <- fread('test_case.csv')
+data[, logret := log(indeks/shift(indeks, 1, type='lag'))]
+
+caviar <- caviarOptim(data[5000:.N,logret])
+
+caviar$bestVals
+#  [,1]       [,2]       [,3]     [,4] [,5]
+#  [1,] 0.3549710 0.02106695 -0.1490612 1.240709    1
+#  [2,] 0.3549990 0.02111399 -0.1507999 1.237332    1
+#  [3,] 0.3550274 0.02091154 -0.1436567 1.245788    1
+#  [4,] 0.3549660 0.02110489 -0.1503366 1.240317    1
+#  [5,] 0.3549659 0.02110502 -0.1503449 1.240319    1
+#  [6,] 0.3549821 0.02102770 -0.1459618 1.239477    1
+#  [7,] 0.3549659 0.02110503 -0.1503451 1.240319    1
+#  [8,] 0.3550288 0.02063165 -0.1343349 1.245138    1
+#  [9,] 0.3549660 0.02110508 -0.1503471 1.240319    1
+# [10,] 0.3549693 0.02110265 -0.1502495 1.240635    1
+
+caviar$bestPar
+# [1]  0.02110502 -0.15034490  1.24031898
+
+tail(caviar$VaR)
+# [1] 0.04133456 0.01886556 0.02421253 0.03195978 0.03104959 0.02367271
+
+# length of VaR is equal to the length of data
+length(caviar$VaR)
+# [1] 1043
+length(data[5000:.N,logret])
+# [1] 1043
+
+# whereas varPredict is VaR for the next period
+caviar$VarPredict
+# [1] 0.01805231
+
+microbenchmark(caviarOptim(data[5000:.N,logret],1),
+               caviarOptim(data[5000:.N,logret],2),
+               caviarOptim(data[5000:.N,logret],3),
+               caviarOptim(data[5000:.N,logret],4),
+               times = 5
+               )
+# With source cpps loaded
+#             Unit: milliseconds
+#                                              expr       min        lq      mean    median        uq       max neval
+#   SAV       caviarOptim(data[5000:.N, logret], 1)  700.1505  750.6235  779.4809  794.0617  818.6963  833.8726     5
+#   AS        caviarOptim(data[5000:.N, logret], 2) 1037.1660 1042.7767 1069.4377 1050.0679 1107.0141 1110.1639     5
+#   GARCH     caviarOptim(data[5000:.N, logret], 3) 1141.1666 1147.9098 1209.1223 1218.8887 1242.9981 1294.6482     5
+#   ADAPTIVE  caviarOptim(data[5000:.N, logret], 4) 1094.4244 1144.2377 1160.9489 1176.5494 1184.6566 1204.8765     5
+
+# Without source cpps loaded +- 3 s slower per each first calculation
+#             Unit: milliseconds
+#                                              expr       min        lq     mean    median        uq      max neval
+#   SAV       caviarOptim(data[5000:.N, logret], 1)  738.8247  761.1415 1363.354  788.7325  812.1219 3715.948     5
+#   AS        caviarOptim(data[5000:.N, logret], 2) 1025.2370 1081.2675 1756.967 1184.6326 1215.5393 4278.160     5
+#   GARCH     caviarOptim(data[5000:.N, logret], 3) 1182.6648 1200.8437 1909.535 1278.3613 1288.6174 4597.186     5
+#   ADAPTIVE  caviarOptim(data[5000:.N, logret], 4) 1132.9430 1133.2657 1748.118 1143.4592 1147.0464 4183.877     5
+
+#ADVANCED
+library(xts)
+library(ggplot2)
+varpredict <- rollapplyr(data[5000:.N,logret], length(data[5000:.N,logret]) - 250, caviarOptim, 1, 0.01, predict = 1) %>% lag
+
+ggplot() + 
+  geom_line(aes(x = 1:250, y = tail(data[5000:.N,logret],250), col = "Index log return")) + 
+  geom_line(aes(x = 1:251, y = -1*varpredict, col = "CAVIAR VaR"))+
+  scale_color_manual(values=c("#ff0000", "#0000ff")) + 
+  ylab("Values")+
+  xlab("Dates")
+
+# End time
+end_time <- Sys.time()
+
+# Print differences
+end_time - start_time
+```
+
+Note that the above code takes a very long time to run.
+
+# Modified Code
+
+Below sets up the code for work later.
+
+```{r, echo=FALSE}
+# Code to setup the code to run
+
+# Clean out old dataset
+# rm(list = ls())
+
+# Read in relevant libraries
+library(microbenchmark)
+library(data.table)
+library(quantmod)
+library(ggplot2)
+library(tseries)
+library(zoo)
+
+# Set up working directory
+setwd("~/Documents/GitHub/CaviaR")
+source('caviar_SM.R')
+
+
+```
+
+Let's convert all of the key bits to functions. Below we pull the data
+
+```{r}
+#' This is a functino which pulls data for use
+#'
+#' @param symbol - symbol to pull
+#' @param compl_case - defaults to true...only includes complete cases in the data
+#' @param adj_close - use adjusted closing prices. Default is yes.
+#' @param log_return - use log return? Default is yes.
+#'
+#' @return - a data frame which can be fed into later functions
+#' @export
+#'
+#' @examples - data_pull("SPY")
+data_pull = function(symbol, compl_case = 1, adj_close = 1, log_return = 1, start_date = "1900-01-01", end_date = Sys.Date()){
+  # Pull in data from quantmod
+  response_pull = getSymbols(symbol, auto.assign = FALSE, from = start_date, to = end_date)
+  # Get adjusted closing price
+  if (adj_close == TRUE){
+    df = Ad(response_pull)
+  } else {
+    df = Cl(response_pull)
+  }
+  # Return complete cases only 
+  if (compl_case == TRUE){
+    df = df[complete.cases(df), ]
+  } else{
+    df = df
+  }
+  # Calculate log return of data
+  if (log_return == TRUE){
+    lr = log(df[,1]/shift(df[,1], 1, type = "lag"))
+    # Combine data
+    df_out = cbind(df, lr)
+    # Rename the data 
+    colnames(df_out) <- c(symbol, paste0(symbol, "_log_return"))
+  } else{
+    df_out = df
+  }
+  # Return data
+  return(df_out)
+}
+
+# abc = response_pull("SPY", auto.assign = FALSE, from = "1900-01-01", to = "2007-08-31")
+# response_pull
+# ?getSymbols
+
+ibm = data_pull("IBM", start_date = "1986-04-06", end_date = "1999-04-08")
+# tail(spy)
+# abcd
+
+tail(ibm)
+
+# dim(ibm)
+
+```
+
+```{r}
+#' Pull the data and run the caviar function on it
+#'
+#' @param input_data - data to use in the function
+#' @param range_data - range of the data to use
+#'
+#' @return - a list of values from the caviar function
+#' @export
+#'
+#' @examples - caviar_pull(spy)
+caviar_pull = function(input_data, range_data = (2:dim(input_data)[1])){
+  # Run the caviar data
+  caviar <- caviarOptim(input_data[range_data,2])
+  return(caviar)
+}
+
+# caviarOptim(spy[2:dim(spy)[1],2])
+
+# cav_spy = caviar_pull(spy)
+# length(cav_spy$VaR)
+# length(spy$SPY_log_return)
+
+
+
+
+```
+
+
+```{r}
+#' Function for producing rolling predictions
+#'
+#' @param input_data - input data from the previous function
+#' @param range_data
+#' @param nfcst 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rolling_predictions = function(input_data, range_data = (2:dim(input_data)[1]), nfcst = 250, model =1, level = 0.01){
+  # Run the varpredict function
+  varpredict <- rollapplyr(input_data[range_data,2], length(range_data) - nfcst, caviarOptim, model, level, predict = 1) %>% lag
+  # Eliminate NAs
+  # pred_no_na = na.omit(varpredict)
+  # Return the data
+  # return(pred_no_na)
+  return(varpredict)
+}
+
+
+
+# out = rolling_predictions(spy, nfcst = 22)
+# out
+
+# Plot the data
+# plot(spy$SPY_log_return)
+# lines(-out, col = "red")
+
+```
+
+
+We now need to write a function which analyzes accuracy of the data.
+
+```{r}
+#' Function to Calculate Loss
+#'
+#' @param symbol - symbol to work with from quantmod. Must be in quotations to work
+#' @param start_dt - start date of the data to build the forecast on 
+#' @param end_dt - end date of the data to build the forecast on  
+#' @param nfcst - number of data points to use in the forecast
+#' @param model - model to use. Defaults to 1
+#' @param level - level of significance. Defaults to 1%
+#'
+#' @return - loss using absolute value
+#' @export - a plot of the data
+#'
+#' @examples
+loss_calc = function(symbol, start_dt, end_dt, nfcst, model = 1, level = 0.01){
+  # Pull in the data
+  raw_data = data_pull(symbol, start_date = start_dt, end_date = end_dt)
+  # Forecast based on the data
+  fcst = na.omit(rolling_predictions(raw_data, nfcst = nfcst, model = model, level = level))*(-1)
+  # Extract actuals
+  act = tail(raw_data, n = nfcst)[,2]
+  # Join the two together and rename
+  join = merge(fcst,act,all=TRUE)
+  colnames(join) <- c("Fcst_VaR", "Act_Return")
+  # print(join)
+  # Calculate the losses
+  loss = abs(sum(ifelse(act > fcst, level, (-1)*(1-level))))
+  # Plot the data
+  plot = plot.xts(join, col = c("red", "black"), lty = c(2,1), main = "Log Return from the SPY vs. Fcst. VaR",grid.col = NA, legend.loc = "bottomleft")
+  # print(addLegend("topright", on=1,
+  #         legend.names = c("Close", "SMA(50)"), 
+  #         lty=c(1, 1), lwd=c(2, 1),
+  #         col=c("black", "red")))
+  # legend("bottomleft", legend = c("Actuals", "Forecast"), col = c("black", "red"), lty = 1:2)
+  # print(plot(join$Act_Return))
+  # lines(join$Fcst_VaR, col = "red", lty = 2)
+  # Return the level of loss
+  return(list(loss, plot, act, fcst))
+}
+
+
+# test = loss_calc("SPY", "2007-01-01","2008-12-31", 22)
+# test[[2]]
+```
+
+# Verification
+
+Let's use the IBM data to analyze if we can reproduce the data seen in the paper.
+
+```{r}
+ibm_verif = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", 200)
+```
+
+```{r}
+ibm_verif_m = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", 800)
+
+```
+
+```{r}
+ibm_verif_l = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", 1600)
+```
+
+It looks like the paper uses data from April 7th through April 7th, 1999, using the last 500 for out-of-sample testing.
+
+```{r}
+# Uses the first model, 1% VaR
+ibm_verif_pap_m1_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=1, 500, level = 0.01)
+
+# Uses the second model, 1% VaR
+ibm_verif_pap_m2_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=2, 500, level = 0.01)
+
+# Uses the third model, 1% VaR
+ibm_verif_pap_m3_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=3, 500, level = 0.01)
+
+# Uses the fourth model, 1% VaR
+ibm_verif_pap_m4_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=4, 500, level = 0.01)
+
+# Uses the first model, 5% VaR
+ibm_verif_pap_m1_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=1, 500, level = 0.05)
+
+# Uses the second model, 5% VaR
+ibm_verif_pap_m2_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=2, 500, level = 0.05)
+
+# Uses the third model, 5% VaR
+ibm_verif_pap_m3_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=3, 500, level = 0.05)
+
+# Uses the fourth model,5% VaR
+ibm_verif_pap_m4_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=4, 500, level = 0.05)
+```
+
+
+
+
+
+```{r}
+ibm_verif_l
+```
+
+
+
+
+# PG and Amazon test
+
+OVERNIGHT TEST - PG and AMZN. 
+
+```{r}
+# Initialize a list for a high-volatility stock, AMZN
+# amzn_list = list()
+
+# Initialize a list for a high-volatility stock, PG
+# PG_list = list()
+```
+
+
+```{r}
+
+
+# amzn_list[[1]] = loss_calc("AMZN", "2007-01-01","2008-12-31", 200)
+# amzn_list[[2]] = loss_calc("AMZN", "2006-10-01","2008-12-31", 200)
+# amzn_list[[3]] = loss_calc("AMZN", "2006-07-01","2008-12-31", 200)
+# amzn_list[[4]] = loss_calc("AMZN", "2006-04-01","2008-12-31", 200)
+# amzn_list[[5]] = loss_calc("AMZN", "2006-01-01","2008-12-31", 200)
+# amzn_list[[6]] = loss_calc("AMZN", "2005-10-01","2008-12-31", 200)
+# amzn_list[[7]] = loss_calc("AMZN", "2005-07-01","2008-12-31", 200)
+# amzn_list[[8]] = loss_calc("AMZN", "2005-04-01","2008-12-31", 200)
+# amzn_list[[9]] = loss_calc("AMZN", "2005-01-01","2008-12-31", 200)
+# amzn_list[[10]] = loss_calc("AMZN", "2004-10-01","2008-12-31", 200)
+# amzn_list[[11]] = loss_calc("AMZN", "2004-07-01","2008-12-31", 200)
+# amzn_list[[12]] = loss_calc("AMZN", "2004-04-01","2008-12-31", 200)
+# 
+# 
+# 
+# PG_list[[1]] = loss_calc("PG", "2007-01-01","2008-12-31", 200)
+# PG_list[[2]] = loss_calc("PG", "2006-10-01","2008-12-31", 200)
+# PG_list[[3]] = loss_calc("PG", "2006-07-01","2008-12-31", 200)
+# PG_list[[4]] = loss_calc("PG", "2006-04-01","2008-12-31", 200)
+# PG_list[[5]] = loss_calc("PG", "2006-01-01","2008-12-31", 200)
+# PG_list[[6]] = loss_calc("PG", "2005-10-01","2008-12-31", 200)
+# PG_list[[7]] = loss_calc("PG", "2005-07-01","2008-12-31", 200)
+# PG_list[[8]] = loss_calc("PG", "2005-04-01","2008-12-31", 200)
+# PG_list[[9]] = loss_calc("PG", "2005-01-01","2008-12-31", 200)
+# PG_list[[10]] = loss_calc("PG", "2004-10-01","2008-12-31", 200)
+# PG_list[[11]] = loss_calc("PG", "2004-07-01","2008-12-31", 200)
+# PG_list[[12]] = loss_calc("PG", "2004-04-01","2008-12-31", 200)
+# 
+# 
+# amzn_list
+# PG_list
+
+
+```
+
+# Exporting the 1 percent IBM daata
+
+```{r}
+# Initialize a list for IBM runs
+ibm_list = list()
+
+ibm_list[[1]] = ibm_verif_pap_m1_1pc
+ibm_list[[2]] = ibm_verif_pap_m2_1pc
+ibm_list[[3]] = ibm_verif_pap_m3_1pc
+ibm_list[[4]] = ibm_verif_pap_m4_1pc
+ibm_list[[5]] = ibm_verif_pap_m1_5pc
+ibm_list[[6]] = ibm_verif_pap_m2_5pc
+ibm_list[[7]] = ibm_verif_pap_m3_5pc
+ibm_list[[8]] = ibm_verif_pap_m4_5pc
+
+
+# Export the IBM data
+# for (i in 1:1){
+for (i in 1:8){
+  # Join the data
+  join = merge(ibm_list[[i]][[4]],ibm_list[[i]][[3]],all=TRUE)
+  # Add an id column
+  if ((i/4) > 1){
+    join$var_level = 0.05
+    join$model = i - 4
+  }
+  else {
+    join$var_level = 0.01
+    join$model = i
+  }
+  # Add a run 
+  join$id = i
+  colnames(join) <- c("Fcst_VaR", "Act_Return", "var_level", "model", "id")
+  # Convert to a zoo
+  join2 = as.zoo(join)
+  # Export the data
+  write.zoo(join2, file = paste0("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr", i))
+}
+  
+# for (i in 1:4){
+#   join = merge(paste0("ibm_verif_pap_m", i,"_1pc")[[4]],paste0("ibm_verif_pap_m", i,"_1pc")[[3]],all=TRUE)
+#   join$model_type = i
+#   colnames(join) <- c("Fcst_VaR", "Act_Return", "model_type")
+#   join2 = as.zoo(join)
+#   write.zoo(join2, file = paste0("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_", i))
+# }
+```
+
+
+```{r}
+# Export the crucial IBM data
+setwd("~/Documents/GitHub/CAViaR/CSV_IBM_083119")
+
+
+# IBM data
+for (i in 1:1){
+  # Join the data
+  join = merge(ibm_verif_l[[4]],ibm_verif_l[[3]],all=TRUE)
+  join$id = i
+  colnames(join) <- c("Fcst_VaR", "Act_Return", "run_num")
+  # Convert to a zoo
+  join2 = as.zoo(join)
+  # join2
+  # Export the data
+  # write.zoo(join2, file = paste0("amzn_result_", i, ".csv"), quote = FALSE, sep = ",")
+  write.zoo(join2, file = paste0("ibm_result_", i))
+  # write.csv(as.data.frame(join), file = paste0("amzn_result_", i, ".csv"))
+}
+
+# IBM data short
+for (i in 1:1){
+  # Join the data
+  join = merge(ibm_verif[[4]],ibm_verif[[3]],all=TRUE)
+  join$id = i
+  colnames(join) <- c("Fcst_VaR", "Act_Return", "run_num")
+  # Convert to a zoo
+  join2 = as.zoo(join)
+  # join2
+  # Export the data
+  # write.zoo(join2, file = paste0("amzn_result_", i, ".csv"), quote = FALSE, sep = ",")
+  write.zoo(join2, file = paste0("ibm_result_s_", i))
+  # write.csv(as.data.frame(join), file = paste0("amzn_result_", i, ".csv"))
+}
+
+```
+
+
+```{r}
+# Let's export the crucial data (actual and forecast as CSV's for use later)
+
+# Set the working directory
+setwd("~/Documents/GitHub/CAViaR/CSV_amzn_pg_072619")
+
+# Amazon data
+for (i in 1:1){
+# for (i in 1:12){
+  # Join the data
+  join = merge(amzn_list[[i]][[4]],amzn_list[[i]][[3]],all=TRUE)
+  join$id = i
+  colnames(join) <- c("Fcst_VaR", "Act_Return", "run_num")
+  # Convert to a zoo
+  join2 = as.zoo(join)
+  # join2
+  # Export the data
+  # write.zoo(join2, file = paste0("amzn_result_", i, ".csv"), quote = FALSE, sep = ",")
+  write.zoo(join2, file = paste0("amzn_result_", i))
+  # write.csv(as.data.frame(join), file = paste0("amzn_result_", i, ".csv"))
+}
+
+join2
+
+
+# ?join
+
+# PG data
+# for (i in 1:2){
+for (i in 1:12){
+  # Join the data
+  join = merge(PG_list[[i]][[4]],PG_list[[i]][[3]],all=TRUE)
+  join$id = i
+  colnames(join) <- c("Fcst_VaR", "Act_Return", "run_num")
+  # Convert to a zoo
+  join2 = as.zoo(join)
+  # Export the data
+  write.zoo(join2, file = paste0("PG_result_", i, ".csv"), quote = FALSE, sep = ",")
+  # Export the data
+  # write.csv(join, file = paste0("PG_result_", i, ".csv"))
+}
+
+# join
+```
+
+
+```{r}
+# amzn_list_backup = amzn_list
+# PG_list_backup = PG_list
+
+
+
+amzn_list
+PG_list[[1]][[4]]
+
+# We need better plots!
+for (i in 1:12){
+  # Join data 
+  join = merge(PG_list[[i]][[4]],PG_list[[i]][[3]],all=TRUE)
+  colnames(join) <- c("Fcst_VaR", "Act_Return")
+  print(plot.xts(join, col = c("red", "black"), lty = c(2,1), main = "Log Return from PG Adj. Close vs. Fcst. VaR",grid.col = NA, legend.loc = "bottomleft"))
+
+}
+
+objects()
+  
+
+```
+
+
+
+
+Now that we have a function, let's loop through and create some useful results.
+
+
+```{r}
+big_list[[1]][[2]]
+big_list[[2]][[2]]
+big_list[[3]][[2]]
+big_list[[4]][[2]]
+```
+
+
+```{r}
+# Initialize a big list
+big_list = list()
+# Intialize a matrix to store loss information
+# sto_mtx = matrix(0, nrow = 3, ncol = 4)
+
+# Fill in first row
+big_list[[1]] = loss_calc("SPY", "2007-01-01","2008-12-31", 66)
+big_list[[2]] = loss_calc("SPY", "2006-01-01","2008-12-31", 66)
+big_list[[3]] = loss_calc("SPY", "2005-01-01","2008-12-31", 66)
+big_list[[4]] = loss_calc("SPY", "2004-01-01","2008-12-31", 66)
+
+# big_list[[1]][[1]]
+
+# Fill in second row
+big_list[[5]] = loss_calc("SPY", "2007-01-01","2010-12-31", 66)
+big_list[[6]] = loss_calc("SPY", "2006-01-01","2010-12-31", 66)
+big_list[[7]] = loss_calc("SPY", "2005-01-01","2010-12-31", 66)
+big_list[[8]] = loss_calc("SPY", "2004-01-01","2010-12-31", 66)
+
+# Fill in third row
+big_list[[9]] = loss_calc("SPY", "2007-01-01","2012-12-31", 66)
+big_list[[10]] = loss_calc("SPY", "2006-01-01","2012-12-31", 66)
+big_list[[11]] = loss_calc("SPY", "2005-01-01","2012-12-31", 66)
+big_list[[12]] = loss_calc("SPY", "2004-01-01","2012-12-31", 66)
+
+big_list
+
+# Populate the matrix
+for (i in 1:nrow(sto_mtx)){
+  # for (j in 1:ncol(sto_mtx)){
+  sto_mtx[i,j] = big_list[[i]][[1]]
+  # }
+}
+
+spy[-1,2]
+adf.test(tail(spy[,2], n = 66))
+adf.test(spy[,2])
+
+sto_mtx
+
+ncol(sto_mtx)
+
+sto_mtx[1,1] = loss_calc("SPY", "2007-01-01","2008-12-31", 66)[[1]]
+sto_mtx[1,2] = loss_calc("SPY", "2006-01-01","2008-12-31", 66)[[1]]
+sto_mtx[1,3] = loss_calc("SPY", "2005-01-01","2008-12-31", 66)[[1]]
+sto_mtx[1,4] = loss_calc("SPY", "2004-01-01","2008-12-31", 66)[[1]]
+
+# Fill in second row
+# sto_mtx[2,1] = loss_calc("SPY", "2008-01-01","2010-12-31", 66)
+sto_mtx[2,1] = loss_calc("SPY", "2007-01-01","2010-12-31", 66)[[1]]
+sto_mtx[2,2] = loss_calc("SPY", "2006-01-01","2010-12-31", 66)[[1]]
+sto_mtx[2,3] = loss_calc("SPY", "2005-01-01","2010-12-31", 66)[[1]]
+sto_mtx[2,4] = loss_calc("SPY", "2004-01-01","2010-12-31", 66)[[1]]
+
+# Fill in third row
+# sto_mtx[3,1] = loss_calc("SPY", "2008-01-01","2012-12-31", 66)
+sto_mtx[3,1] = loss_calc("SPY", "2007-01-01","2012-12-31", 66)[[1]]
+sto_mtx[3,2] = loss_calc("SPY", "2006-01-01","2012-12-31", 66)[[1]]
+sto_mtx[3,3] = loss_calc("SPY", "2005-01-01","2012-12-31", 66)[[1]]
+sto_mtx[3,4] = loss_calc("SPY", "2004-01-01","2012-12-31", 66)[[1]]
+
+# sto_mtx_backup = sto_mtx
+
+```
+
+
+
+Below is scratch work.
+
+
+```{r}
+# Pull in data 
+spy_3rs_s08 = data_pull("SPY", start_date = "2005-01-01", end_date = "2008-09-30")
+spy_2rs_s08 = data_pull("SPY", start_date = "2006-01-01", end_date = "2008-09-30")
+spy_1rs_s08 = data_pull("SPY", start_date = "2007-01-01", end_date = "2008-09-30")
+
+# Forecast based on the data
+fcst_3yr = rolling_predictions(spy_3rs_s08, nfcst = 22)
+fcst_2yr = rolling_predictions(spy_2rs_s08, nfcst = 22)
+fcst_1yr = rolling_predictions(spy_1rs_s08, nfcst = 22)
+
+fcst_3yr
+
+
+theo = na.omit(fcst_3yr)*(-1)
+length(spy_3rs_s08)
+exp = spy_3rs_s08["2008-08-28/2008-09",2] 
+merge(theo,exp,all=TRUE)
+
+
+loss_3yr = abs(sum(ifelse(exp > theo, 0.01, -0.99)))
+loss_3yr
+
+plot(exp)
+lines(theo)
+
+# Calculate the loss for a shorter time horizon
+theo = na.omit(fcst_2yr)*(-1)
+length(spy_2rs_s08)
+?tail
+tail(spy_2rs_s08, n = 22)[,2]
+exp = spy_2rs_s08["2008-08-28/2008-09",2] 
+loss_2yr = abs(sum(ifelse(exp > theo, 0.01, -0.99)))
+loss_2yr
+
+
+# Calculate the loss for a shorter time horizon
+theo = na.omit(fcst_1yr)*(-1)
+# length(spy_2rs_s08)
+exp = spy_1rs_s08["2008-08-28/2008-09",2] 
+loss_1yr = abs(sum(ifelse(exp > theo, 0.01, -0.99)))
+loss_1yr
+
+theo
+
+
+
+theo
+exp
+
+```
+
+
+```{r}
+# Below sets up the start time
+start_time <- Sys.time()
+
+# Write a function to pull in
+
+# Pulls in the log return data
+data <- fread('test_case.csv')
+data
+data[, logret := log(indeks/shift(indeks, 1, type='lag'))]
+data
+
+data[5000:.N,logret]
+
+caviar <- caviarOptim(data[5000:.N,logret])
+
+
+caviar$bestVals
+#  [,1]       [,2]       [,3]     [,4] [,5]
+#  [1,] 0.3549710 0.02106695 -0.1490612 1.240709    1
+#  [2,] 0.3549990 0.02111399 -0.1507999 1.237332    1
+#  [3,] 0.3550274 0.02091154 -0.1436567 1.245788    1
+#  [4,] 0.3549660 0.02110489 -0.1503366 1.240317    1
+#  [5,] 0.3549659 0.02110502 -0.1503449 1.240319    1
+#  [6,] 0.3549821 0.02102770 -0.1459618 1.239477    1
+#  [7,] 0.3549659 0.02110503 -0.1503451 1.240319    1
+#  [8,] 0.3550288 0.02063165 -0.1343349 1.245138    1
+#  [9,] 0.3549660 0.02110508 -0.1503471 1.240319    1
+# [10,] 0.3549693 0.02110265 -0.1502495 1.240635    1
+
+caviar$bestPar
+# [1]  0.02110502 -0.15034490  1.24031898
+
+tail(caviar$VaR)
+# [1] 0.04133456 0.01886556 0.02421253 0.03195978 0.03104959 0.02367271
+
+# length of VaR is equal to the length of data
+length(caviar$VaR)
+# [1] 1043
+length(data[5000:.N,logret])
+# [1] 1043
+
+# whereas varPredict is VaR for the next period
+caviar$VarPredict
+# [1] 0.01805231
+
+?microbenchmark
+
+microbenchmark(caviarOptim(data[5000:.N,logret],1),
+               caviarOptim(data[5000:.N,logret],2),
+               caviarOptim(data[5000:.N,logret],3),
+               caviarOptim(data[5000:.N,logret],4),
+               times = 5
+               )
+# With source cpps loaded
+#             Unit: milliseconds
+#                                              expr       min        lq      mean    median        uq       max neval
+#   SAV       caviarOptim(data[5000:.N, logret], 1)  700.1505  750.6235  779.4809  794.0617  818.6963  833.8726     5
+#   AS        caviarOptim(data[5000:.N, logret], 2) 1037.1660 1042.7767 1069.4377 1050.0679 1107.0141 1110.1639     5
+#   GARCH     caviarOptim(data[5000:.N, logret], 3) 1141.1666 1147.9098 1209.1223 1218.8887 1242.9981 1294.6482     5
+#   ADAPTIVE  caviarOptim(data[5000:.N, logret], 4) 1094.4244 1144.2377 1160.9489 1176.5494 1184.6566 1204.8765     5
+
+# Without source cpps loaded +- 3 s slower per each first calculation
+#             Unit: milliseconds
+#                                              expr       min        lq     mean    median        uq      max neval
+#   SAV       caviarOptim(data[5000:.N, logret], 1)  738.8247  761.1415 1363.354  788.7325  812.1219 3715.948     5
+#   AS        caviarOptim(data[5000:.N, logret], 2) 1025.2370 1081.2675 1756.967 1184.6326 1215.5393 4278.160     5
+#   GARCH     caviarOptim(data[5000:.N, logret], 3) 1182.6648 1200.8437 1909.535 1278.3613 1288.6174 4597.186     5
+#   ADAPTIVE  caviarOptim(data[5000:.N, logret], 4) 1132.9430 1133.2657 1748.118 1143.4592 1147.0464 4183.877     5
+
+#ADVANCED
+library(xts)
+library(ggplot2)
+varpredict <- rollapplyr(data[5000:.N,logret], length(data[5000:.N,logret]) - 250, caviarOptim, 1, 0.01, predict = 1) %>% lag
+
+ggplot() + 
+  geom_line(aes(x = 1:250, y = tail(data[5000:.N,logret],250), col = "Index log return")) + 
+  geom_line(aes(x = 1:251, y = -1*varpredict, col = "CAVIAR VaR"))+
+  scale_color_manual(values=c("#ff0000", "#0000ff")) + 
+  ylab("Values")+
+  xlab("Dates")
+
+# End time
+end_time <- Sys.time()
+
+# Print differences
+end_time - start_time
+```
+
+
+
+```{r}
+# Uses the first model, 1% VaR
+ibm_verif_pap_m1_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=1, 500, level = 0.01)
+```
+
+```{r}
+# Uses the second model, 1% VaR
+ibm_verif_pap_m2_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=2, 500, level = 0.01)
+```
+
+
+```{r}
+# Uses the third model, 1% VaR
+ibm_verif_pap_m3_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=3, 500, level = 0.01)
+```
+
+```{r}
+# Uses the fourth model, 1% VaR
+ibm_verif_pap_m4_1pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=4, 500, level = 0.01)
+```
+
+```{r}
+# Uses the first model, 5% VaR
+ibm_verif_pap_m1_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=1, 500, level = 0.05)
+```
+
+```{r}
+# Uses the second model, 5% VaR
+ibm_verif_pap_m2_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=2, 500, level = 0.05)
+```
+
+
+```{r}
+# Uses the third model, 5% VaR
+ibm_verif_pap_m3_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=3, 500, level = 0.05)
+```
+
+```{r}
+# Uses the fourth model,5% VaR
+ibm_verif_pap_m4_5pc = loss_calc("IBM", start_dt = "1986-04-06", end_dt = "1999-04-08", model=4, 500, level = 0.05)
+```
+

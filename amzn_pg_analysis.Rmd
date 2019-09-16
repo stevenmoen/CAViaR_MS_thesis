@@ -1,0 +1,122 @@
+---
+title: "Optimal Bandwidth Analysis Using CAViaR"
+author: "Steven Moen"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+# knitr::opts_chunk$set(fig.path='Figs/',
+#                       echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+```
+
+
+# Executive Summary
+
+I looked at the adjusting closing prices for both PG (Proctor and Gamble, a comparatively stable stock) and AMZN (Amazon, a comparatively volatile stock) and their VaR forecast for the last 200 trading days of 2008 and used history starting from January 1st, 2007 (for Run 1) and going back a quarter each time (the next forecast would use data from October 1st, 2006) going back to April 2004 (for Run 12). Here are the two main conclusions I see:
+
+- The VaR is generally more unstable for PG relative to AMZN
+- The forecast appears to get more accurate as data is added for PG; less so for Amazon
+
+# Details
+
+- All of the runs measure the accuracy of the CAViaR model using the adaptive model for the last 200 trading days of 2008
+- All the models use either the adjusted closing price of AMZN or PG as an input
+- All perform a one-step-ahead forecast of the data
+- The VaR level is set at 1% and uses the symmetric absolute value model - there are three other loss types readily available, such as the asymmetric slope, indirect GARCH, and adaptive modeling
+
+```{r}
+# Read in relevant libraries
+library(microbenchmark)
+library(data.table)
+library(quantmod)
+library(ggplot2)
+library(tseries)
+library(knitr)
+library(kableExtra)
+library(formattable)
+```
+
+# Analysis of AMZN
+
+```{r}
+# Let's create graphs for the Amazon data
+for (i in 1:12){
+  # Export the data
+  int_df <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/amzn_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  print(plot.xts(int_df[,1:2], col = c("red", "black"), lty = c(2,1), main = paste0("Log Return from AMZN Adj. Close vs. Fcst. VaR, Run ", i),grid.col = NA, legend.loc = "bottomleft"))
+}
+
+
+
+```
+
+```{r}
+# Now let's analyze the accuracy of the Amazon data
+amzn_sto_df = as.data.frame(matrix(0, nrow =3, ncol = 12))
+rownames(amzn_sto_df) <- c("VaR Exceeded", "VaR Not Exceeded", "Total Days")
+colnames(amzn_sto_df) <- paste0("Run ",rep(1:12))
+
+# Populate the data frame nicely
+for (i in 1:12){
+  # Import the data
+  int_df <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/amzn_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  # Calculate the error
+  breach = ifelse(int_df$Act_Return > int_df$Fcst_VaR, 0, 1)
+  # Put the data into a data frame
+  amzn_sto_df[1,i] = sum(breach)
+  amzn_sto_df[2,i] = length(breach) - sum(breach)
+  amzn_sto_df[3,i] = length(breach)
+}
+
+# Style the data frame nicely
+amzn_sto_df %>% kable(caption = "Accuracy of VaR Forecast for Amazon") %>% kable_styling(latex_options = c( "scale_down"), full_width = F)
+
+```
+
+
+# Analysis of PG
+
+```{r}
+# Create graphs for the PG data
+for (i in 1:12){
+  # Import the data
+  int_df <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/PG_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  print(plot.xts(int_df[,1:2], col = c("red", "black"), lty = c(2,1), main = paste0("Log Return from PG Adj. Close vs. Fcst. VaR, Run Number ", i),grid.col = NA, legend.loc = "bottomleft"))
+}
+```
+
+```{r}
+# Now let's analyze the accuracy for the PG data
+pg_sto_df = as.data.frame(matrix(0, nrow =3, ncol = 12))
+rownames(pg_sto_df) <- c("VaR Exceeded", "VaR Not Exceeded", "Total Days")
+colnames(pg_sto_df) <- paste0("Run ",rep(1:12))
+
+# Populate the data frame
+for (i in 1:12){
+  # Import the data
+  int_df <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/PG_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  # Calculate the error
+  breach = ifelse(int_df$Act_Return > int_df$Fcst_VaR, 0, 1)
+  # Put the data into a data frame
+  pg_sto_df[1,i] = sum(breach)
+  pg_sto_df[2,i] = length(breach) - sum(breach)
+  pg_sto_df[3,i] = length(breach)
+}
+
+# Style the data frame nicely
+pg_sto_df %>% kable(caption = "Accuracy of VaR Forecast for PG") %>% kable_styling(latex_options = c("scale_down"), full_width = F)
+
+```
+
+# Code Appendix
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```
