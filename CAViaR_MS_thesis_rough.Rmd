@@ -392,7 +392,57 @@ for (i in 1:8){
 
 # Analyzing the IBM Data
 
-In this code below, we will calculate the number of hits and compare against the Engle paper.
+Below is the modified results with the corrected values for the G parameter in the 
+
+```{r}
+# Read in the data - 4th and 8th results are modified from the prior result
+ibm_1 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr1", header = T, sep = " ")
+ibm_2 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr2", header = T, sep = " ")
+ibm_3 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr3", header = T, sep = " ")
+ibm_4 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/091719/ibm_result_pr_g104", header = T, sep = " ")
+ibm_5 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr5", header = T, sep = " ")
+ibm_6 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr6", header = T, sep = " ")
+ibm_7 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR/CSV_IBM_090419/ibm_result_pr7", header = T, sep = " ")
+ibm_8 = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/091719/ibm_result_pr_g108", header = T, sep = " ")
+
+# Combine into a single file
+ibm_big = rbind(ibm_1, ibm_2, ibm_3, ibm_4, ibm_5, ibm_6, ibm_7, ibm_8)
+
+# See when there is a hit and add onto the dataset
+breach = ifelse(ibm_big$Act_Return > ibm_big$Fcst_VaR, 0, 1)
+ibm_big = cbind(ibm_big, breach)
+
+# Summarize the data
+ibm_sum <- ibm_big %>% 
+  select(var_level, model, breach) %>% 
+  group_by(var_level, model) %>% 
+  summarize(total_breach = sum(breach))
+
+# Calculate hit rate
+ibm_sum$hit_rate <- ibm_sum$total_breach/500
+ibm_sum
+
+# Add a table from the CAViaR paper
+ibm_sum$paper_hit_rate <- c(0.016, 0.016, 0.016, 0.016, 0.06, 0.074, 0.074, 0.05)
+
+# Rename the Columns
+colnames(ibm_sum) <- c("Theoretical VaR Level", "Model", "Total Number of Breaches", "Empirical VaR Level (My Result)", "Empirical VaR Level (In Paper)")
+
+# Drop the third column
+ibm_sum <- ibm_sum[,-3]
+
+# Make the table pretty
+ibm_sum %>% kable(caption = "Comparison of Paper Results with My Results", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = "Here are what the model numbers refer to",
+           number = c("Symmetric absolute value", "Asymmetric slope", "Indirect GARCH", "Adaptive with G = 10"))
+
+
+# ibm_sum
+
+```
+
+It looks like the results are similar but are not identical. Probably good enough to move on from.
+
+These are the results from the analysis on 9/16.
 
 ```{r}
 # Read in the data
@@ -440,8 +490,6 @@ ibm_sum %>% kable(caption = "Comparison of Paper Results with My Results", digit
 # ibm_sum
 
 ```
-
-It looks like the results are similar but are not identical. Probably good enough to move on from.
 
 ```{r}
 # Generate a mixture model
