@@ -1,0 +1,37 @@
+---
+title: "Thesis Idea"
+author: "Steven Moen"
+date: "10/14/2019"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+One way to think of CAViaR is as an ARMA model where the modeler seeks to directly model the quantile. This is supported by the paper; note on page 368 of the CAViaR paper by Engle and Manganelli, the authors say that "we propose a different approach to quantile estimation. Instead of modeling the whole distribution, we model the quantile directly".
+
+Statistically, this seems plausible. The authors mention how "analysis of linear regression quantile models has been extended to cases with heteroscedastic...and nonstationary dependent errors...time series models...simultaneous equations models...and censored regression models". They mention how many of the semiparametric and nonparametric historical methods are "ad hoc" and "based on empirical justifications rather than on sound statistical theory".
+
+The problem that I see with this set of modeling choices is that in a time of severe financial crisis, stocks that are generally benign tend to be highly volatile. This can be seen in the behavior of Proctor & Gamble's common stock (PG) during the great recession. However, Amazon (AMZN)'s VaR forecast was actually quite accurate during the recession. This intuition was confirmed with a simulation study; stocks that see a huge jump in volatility relative to baseline perform much more poorly than stocks that are generally volatile.
+
+The above observations do prompt the question - what if there were a way to combine these two stocks together into a multivariate VaR forecast? I think that if that were done, then the forecast could be much more accurate because there would be some way of incorporating the high volatility levels of the other stock in the low-volatility stock.
+
+Using the fact that a CAViaR forecast can be written as an ARMA model, let's write out each of the models as follows, where $Y_{t,\text{lv}}$ refers to the low-volatility stock and $Y_{t,\text{hv}}$ refers to the high-volatility stock.
+
+$$
+Y_{t,\text{lv}} \sim \text{ARMA}(p,q)
+$$
+$$
+Y_{t,\text{hv}} \sim \text{ARMA}(p,q)
+$$
+
+These two can be generalized into one model, written as follows:
+
+$$
+\boldsymbol{Y_t} \sim \text{VARMA}(p,q)
+$$
+
+Thinking about this model, here are a few questions I was considering:
+
+1) Would the cross terms of the model be of any use in "capturing" some of the volatility and the potential value of using the high-risk stock to forecast the low-risk stock?
+2) Perhaps locally estimating the CAViaR model would be useful?
+3) Is there a way to dynamically estimate the volatility; would that be of use? Dr. Tsay's book on Multivariate Time Series analysis has several useful models. 
