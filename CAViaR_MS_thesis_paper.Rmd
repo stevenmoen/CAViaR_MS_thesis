@@ -27,6 +27,8 @@ library(magrittr)
 library(dplyr)
 library(kableExtra)
 library(formattable)
+library(quantreg)
+library(MTS)
 
 # Set up working directory
 setwd("~/Documents/GitHub/CaviaR")
@@ -66,7 +68,7 @@ data_pull = function(symbol, compl_case = 1, adj_close = 1, log_return = 1, star
     # Combine data
     df_out = cbind(df, lr)
     # Rename the data 
-    colnames(df_out) <- c(symbol, paste0(symbol, "_log_return"))
+    colnames(df_out) <- c(sym=bol, paste0(symbol, "_log_return"))
   } else{
     df_out = df
   }
@@ -358,3 +360,47 @@ stock_simul = function(n1, n2, s1_sd, s2_sd, s1_mean = 0, s2_mean = 0, rseed = 1
 
 
 ```
+
+
+# Combining a Diffusion Index Model with the Quantile Regression Model
+
+Response is IBM, pick 5 stocks for predictors.
+
+```{r}
+# Pull IBM
+ibm = data_pull("IBM", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# Pull 10 stocks at random that existed in the DJIA over the timeframe
+# Exxon
+xom = data_pull("XOM", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# PG
+pg = data_pull("PG", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# General Electric
+ge = data_pull("GE", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# 3M
+mmm = data_pull("MMM", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# Disney
+dis = data_pull("DIS", start_date = "1986-04-06", end_date = "1999-04-08")
+
+```
+
+There is probably some work to be done with choosing these stocks. I only picked ones with data.
+
+```{r}
+# Plot the data
+# plot.xts(ibm[,2])
+
+```
+
+Let's just see if there is any merit to just regressing one set of stocks on another.
+
+```{r}
+# Predictors
+?SWfore
+SWfore
+```
+
