@@ -6,7 +6,7 @@ output: html_notebook
 
 # Background and Introduction
 
-Value-at-risk modeling, or VaR is a commonly used tool to measure riskiness in a financial institution. CAViaR was a new take on risk modeling originally proposed by Robert Engle and Simone Manganelli in 2004 which builds upon the literature of modeling regression quantiles in settings which are essential 
+Value-at-risk modeling, or VaR, is a commonly used tool to measure riskiness in a financial institution. CAViaR was a new take on risk modeling originally proposed by Robert Engle and Simone Manganelli in 2004 which builds upon the literature of modeling regression quantiles in settings which are essential 
 
 and agree with the basic premise of the CAViaR paper that many of the nonparametric historical simulation methods don’t have attractive statistical properties and are chosen more for experimental qualities (an example of this in the 1998 paper by Boudoukh, Richardson, and Whitelaw cited by Engle which uses a semiparametric "hybrid" approach)
 I think trying to think too narrowly about VaR isn't a very interesting statistical problem - in a sense, VaR is just a useful summarization of quantile risk put into dollar figures for easy consumption
@@ -403,4 +403,111 @@ Let's just see if there is any merit to just regressing one set of stocks on ano
 ?SWfore
 SWfore
 ```
+
+The code that is used in a diffusion index model is as follows. The key is figuring out where to make the extension. I'll go through and comment everything and see what's what.
+
+```{r}
+#' Below is the modified diffusion index code.
+#'
+#' @param y - response variable
+#' @param x - predictor variables
+#' @param orig - forecast origin
+#' @param m - number of diffusion indexes used
+#'
+#' @return - returns a list of variables for use in the diffusion index
+#' @export
+#'
+#' @examples
+mod_di = function (y, x, orig, m) 
+{
+  # Converts the response variables into a matrix
+  if (!is.matrix(x)) 
+      x = as.matrix(x)
+  # nT is number of t time-steps
+  nT = dim(x)[1]
+  # k is the number of diffusion indices used
+  k = dim(x)[2]
+  # Sanity checks to ensure that the origin isn't past the number of time points
+  if (orig > nT) 
+      orig = nT
+  # Makes sure that there aren't more predictors than there variables in the dataset
+  if (m > k) 
+      m = k
+  # Makes sure there are at least some variables
+  if (m < 1) 
+      m = 1
+  # Subdivides the dataframe
+  x1 = x[1:orig, ]
+  # Calculates means of each row
+  me = apply(x1, 2, mean)
+  # Calculates standard deviations of each column
+  se = sqrt(apply(x1, 2, var))
+  # Creates a matrix x1, which normalizes all the columns. 
+  # This may be an issue since it assumes that the distribution is sufficiently described by the first two moments
+  x1 = x
+  for (i in 1:k) {
+      x1[, i] = (x1[, i] - me[i])/se[i]
+  }
+  V1 = cov(x1[1:orig, ])
+  # Performs an eigen decomposition
+  m1 = eigen(V1)
+  # Selects eigenvalues
+  sdev = m1$values
+  # Selects eigenvectors
+  M = m1$vectors
+  # Makes a smaller matrix
+  M1 = M[, 1:m]
+  # This is the diffusion index model - [orig x p]*[p x m] = [orig x m]
+  Dindex = x1 %*% M1
+  # Cut down both the response and predictors to be a reasonable size
+  y1 = y[1:orig]
+  DF = Dindex[1:orig, ]
+  # Apply the linear model - HERE is the key.
+  mm = lm(y1 ~ DF)
+  # Puts coefficients in a matrix
+  coef = matrix(mm$coefficients, (m + 1), 1)
+  # Initializes yhat variables and MSE
+  yhat = NULL
+  MSE = NULL
+  if (orig < nT) {
+    # Creates a nfcst by (m+1) matrix
+    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, 
+        ])
+    # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
+    yhat = newx %*% coef
+    # Calculates errors
+    err = y[(orig + 1):nT] - yhat
+    MSE = mean(err^2)
+    cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+  }
+  SWfore <- list(coef = coef, yhat = yhat, MSE = MSE, loadings = M1, 
+      DFindex = Dindex)
+}
+
+
+
+?cbind
+```
+
+```{r}
+# Testing to see how apply function works
+test_mat = matrix(rep(seq(1,5),5), nrow=5, ncol = 5)
+# ?as.matrix
+# Test apply function. Row means should be 1 through 5, col means should all be 3
+row_me = apply(test_mat, 1, mean)
+col_me = apply(test_mat, 2, mean)
+row_se = sqrt(apply(test_mat, 1, var))
+col_se = sqrt(apply(test_mat, 2, var))
+
+# print(c(row_me, col_me, row_se, col_se))
+
+# Exactly as I expected.
+
+# test_mat
+```
+
+```{r}
+# Test the matrix multiplication
+```
+
 
