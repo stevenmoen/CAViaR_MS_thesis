@@ -68,7 +68,7 @@ data_pull = function(symbol, compl_case = 1, adj_close = 1, log_return = 1, star
     # Combine data
     df_out = cbind(df, lr)
     # Rename the data 
-    colnames(df_out) <- c(sym=bol, paste0(symbol, "_log_return"))
+    colnames(df_out) <- c(sym=symbol, paste0(symbol, "_log_return"))
   } else{
     df_out = df
   }
@@ -413,12 +413,13 @@ The code that is used in a diffusion index model is as follows. The key is figur
 #' @param x - predictor variables
 #' @param orig - forecast origin
 #' @param m - number of diffusion indexes used
+#' @param tau - VaR level to use; must be between 0 and 1
 #'
 #' @return - returns a list of variables for use in the diffusion index
 #' @export
 #'
 #' @examples
-mod_di = function (y, x, orig, m) 
+mod_di = function (y, x, orig, m, tau) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
@@ -463,7 +464,8 @@ mod_di = function (y, x, orig, m)
   y1 = y[1:orig]
   DF = Dindex[1:orig, ]
   # Apply the linear model - HERE is the key.
-  mm = lm(y1 ~ DF)
+  # mm = lm(y1 ~ DF) - old function
+  mm = rq(y1 ~ DF, tau = tau)
   # Puts coefficients in a matrix
   coef = matrix(mm$coefficients, (m + 1), 1)
   # Initializes yhat variables and MSE
@@ -486,8 +488,104 @@ mod_di = function (y, x, orig, m)
 
 
 
-?cbind
+# ?cbind
 ```
+
+Now that we have the function, let's see if we can get it to work. First, we'll need to compile all of our data
+
+```{r, cache = TRUE}
+#' This is a function which creates a data frame for the response and explanatory variables that we'll feed into the diffusion index
+#'
+#' @param symbol_list - a list of symbols recognizable by the 
+#' @param resp_var - the response variable we'd like to forecast; default is SPY
+#' @param compl_case - defaults to true...only includes complete cases in the data
+#'
+#' @return - a data frame which can be fed into the SWfore function
+#' @export
+#'
+#' @examples - diff_index_df(c("XLF", "XLE", "PSCT", "XLV", "VPU", "XLP", "IGF", "XWEB", "PPTY"))
+diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1){
+  # Pull in response variable
+  response_pull = getSymbols(resp_var, auto.assign = FALSE)
+  # Get adjusted closing price
+  if (adj_close == TRUE){
+    diff_df = Ad(response_pull)
+  } else {
+    diff_df = Cl(response_pull)
+  }
+  # Loop through the symbols and join in data
+  for (i in 1:length(symbol_list)){
+    # Pull closing price
+    expl_pull = getSymbols(symbol_list[i], auto.assign = FALSE)
+    # Extract closing price - 4th element
+    if (adj_close == TRUE){
+      expl_cl = Ad(expl_pull)
+    } else {
+      expl_cl = Cl(expl_pull)
+    }
+    # Join the data
+    diff_df = merge(diff_df, expl_cl, join = "left", fill = NA)
+  }
+  # Return complete cases only 
+  if (compl_case == TRUE){
+    diff_df_out = diff_df[complete.cases(diff_df), ]
+  } else{
+    diff_df_out = diff_df
+  }
+  # Difference data
+  return(diff_df_out)
+}
+```
+
+```{r, cache = TRUE}
+#' Converts a diff_df into a data frame with approximate percentage changes diff(log(diff_df))
+#'
+#' @param diff_df - output of the diff_index_df function with complete cases
+#'
+#' @return - retuns the differenced data
+#' @export
+#'
+#' @examples - pc_diff_index(test_compl) 
+
+pc_diff_index = function(diff_df){
+  # Difference the log of the data
+  pc_diff_index = diff(log(diff_df))
+  # Remove the first row
+  pc_diff_index_out = pc_diff_index[-1,]
+  return(pc_diff_index_out)
+}
+
+```
+
+
+
+```{r}
+df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG")
+pc_df = pc_diff_index(df)
+```
+
+```{r}
+# pc_df
+```
+
+Now, let's test it. Moment of truth.
+
+```{r}
+# See what the 5% and 1% VaR levels look like
+var_5pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.05)
+var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
+
+# Create a plot
+ts.plot(pc_df[101:400,1])
+lines(var_5pc$yhat[1:300], col = "blue", lty = 2)
+lines(var_1pc$yhat[1:300], col = "red", lty = 2)
+
+# Calculate accuracy
+var_1pc$yhat
+```
+
+
+# JUNK CODE
 
 ```{r}
 # Testing to see how apply function works
