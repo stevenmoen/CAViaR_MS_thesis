@@ -1,18 +1,33 @@
 ---
 title: "M.S. Thesis - First Draft"
 author: "Steven Moen"
+date: "Friday, January 24th, 2020"
 output: html_notebook
 ---
 
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+```
+
 # Background and Introduction
 
-Value-at-risk modeling, or VaR, is a commonly used tool to measure riskiness in a financial institution. CAViaR was a new take on risk modeling originally proposed by Robert Engle and Simone Manganelli in 2004 which builds upon the literature of modeling regression quantiles in settings which are essential 
+Value-at-risk modeling, or VaR, is a commonly used tool to measure riskiness in a financial institution. CAViaR was a new take on risk modeling originally proposed by Robert Engle and Simone Manganelli in 2004 which builds upon the literature of modeling regression quantiles in settings which are essential. 
 
 and agree with the basic premise of the CAViaR paper that many of the nonparametric historical simulation methods don’t have attractive statistical properties and are chosen more for experimental qualities (an example of this in the 1998 paper by Boudoukh, Richardson, and Whitelaw cited by Engle which uses a semiparametric "hybrid" approach)
 I think trying to think too narrowly about VaR isn't a very interesting statistical problem - in a sense, VaR is just a useful summarization of quantile risk put into dollar figures for easy consumption
 In my opinion, the most interesting question in the CAViaR paper isn’t VaR per se, it’s testing their theorems under relaxations of their assumptions to better understand their approach to extreme value theory. In particular, the following analyses catch my eye:
 How important is the assumption C2 on page 374 of the CAVIAR paper (which underlies Theorem 1 about the consistency of the estimator beta hat)? It states that "conditional on all of the past information...the error terms form a stationary process". It may be an interesting test to see how much nonstationarity affects the consistency of the estimator beta hat. I could do this via simulation and see if there's a lot of value here, which may lead us to a more fundamental result.
 In my opinion, theorems 4 and 5 (p. 371) are the most important in the paper because they state that the DQ_IS and DQ_OOS quantities are pivotals asymptotically. But it begs the question of how much does that matter, especially in the context of VaR, which in all likelihood is working with limited data? Therefore, it seems to me that the DQ8 and DQ9 assumptions are the shakiest assumptions required for theorem 5. It might be interesting to see how far off from a chi-squared distribution real-world data actually is. This may allow us to develop "rules of thumb" about the accuracy of these asymptotic distributions.
+
+# Methods Used
+
+Fill in.
+
+# Data Used
+
+# Results
+
 
 ```{r}
 
@@ -36,7 +51,12 @@ source('caviar_SM.R')
 ```
 
 ```{r}
-#' This is a function which pulls data for use
+# This code below is for use in the CAViaR sections.
+```
+
+
+```{r}
+#' This is a function which pulls data for use in the CAViaR model
 #'
 #' @param symbol - symbol to pull
 #' @param compl_case - defaults to true...only includes complete cases in the data
@@ -82,7 +102,7 @@ ibm = data_pull("IBM", start_date = "1986-04-06", end_date = "1999-04-08")
 ```
 
 ```{r}
-#' Pull the data and run the caviar function on it
+#' Pull the data and run the CAViaR function on it
 #'
 #' @param input_data - data to use in the function
 #' @param range_data - range of the data to use
@@ -130,7 +150,7 @@ rolling_predictions = function(input_data, range_data = (2:dim(input_data)[1]), 
 ```
 
 ```{r}
-#' Function to Calculate Loss
+#' Function to Calculate Loss from the above predictions
 #'
 #' @param symbol - symbol to work with from quantmod. Must be in quotations to work
 #' @param start_dt - start date of the data to build the forecast on 
@@ -208,15 +228,17 @@ stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
 
 ```
 
+```{r}
+# Above concludes the CAViaR Code
 
+# Below is for the simulation study
+```
 
 ```{r}
 # Low to high volatility series
 lth_series = stock_simul(500, 25, 0.001, -0.005, 0.001, 0.01)
 mth_series = stock_simul(500, 25, 0.001, -0.005, 0.005, 0.01)
 hth_series = stock_simul(500, 25,  0.001, -0.005, 0.01, 0.01)
-
-# lth_series
 ```
 
 
@@ -237,8 +259,6 @@ plot(dl_lth, type = "l", xlab = "Days", ylab = "Differenced Log Growth", ylim = 
 lines(dl_mth, type = "l", col = "red")
 lines(dl_hth, type = "l", col = "blue")
 legend("bottomright", legend=c("Low Vol. Stock", "Mid Vol. Stock", "High Vol. Stock"),col=c("black", "red", "blue"), lty = c(1,1,1))
-
-# dl_lth
 ```
 
 
@@ -322,47 +342,17 @@ lines(m1_hth_sm_is_01[1:10], col = "green")
 ```
 
 ```{r}
-cav
+# We may need to expand this to other areas. Ask Wei Biao for simulation advice.
 ```
 
-
-
-```{r}
-#' Stock simulation for use in CAViaR simulation study
-#'
-#' @param n1 - number of data points in first series
-#' @param n2 - number of data points in second series
-#' @param s1_sd - standard deviation of first series
-#' @param s2_sd - standard deviation of second series 
-#' @param s1_mean - mean of first series 
-#' @param s2_mean - mean of second series 
-#' @param rseed - random seed for reproducibility
-#'
-#' @return - output time series
-#' @export
-#'
-#' @examples hth_series = stock_simul(100, 25, 10, 10)
-stock_simul = function(n1, n2, s1_sd, s2_sd, s1_mean = 0, s2_mean = 0, rseed = 1234){
-  # Set random seed
-  set.seed(rseed)
-  # Simulate first series
-  for (i in 1:(n1-1)){
-    
-  }
-  # s1 <- rnorm(n1, mean = s1_mean, sd = s1_sd)
-  # Simulate second series
-  s2 <- rnorm(n2, mean = s2_mean, sd = s2_sd)
-  # Combine the two series
-  long <- as.matrix(c(s1, s2))
-  # Export the data
-  return(long)
-}
-
-
-```
 
 
 # Combining a Diffusion Index Model with the Quantile Regression Model
+
+```{r}
+# Below is code that pulls real data for analysis
+```
+
 
 Response is IBM, pick 5 stocks for predictors.
 
@@ -584,6 +574,92 @@ lines(var_1pc$yhat[1:300], col = "red", lty = 2)
 var_1pc$yhat
 ```
 
+# Stock simulation
+
+Real data is messy, but simulation could give us some idea of whether combining all the stocks into a pool could give a lift.
+
+```{r}
+#' Stock simulation for use in CAViaR simulation study
+#'
+#' @param n1 - number of data points in first series
+#' @param n2 - number of data points in second series
+#' @param s1_sd - standard deviation of first series
+#' @param s2_sd - standard deviation of second series 
+#' @param s1_mean - mean of first series 
+#' @param s2_mean - mean of second series 
+#' @param rseed - random seed for reproducibility
+#'
+#' @return - output time series
+#' @export
+#'
+#' @examples hth_series = stock_simul(100, 25, 10, 10)
+stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
+  # Set random seed
+  set.seed(rseed)
+  # Initialize vector and put first value in the series
+  s1 <- rep(1, n1)
+  # Simulate first series
+  for (i in 2:n1){
+    s1[i] <- s1[i-1]*(1+s1_gr) + rnorm(1, mean = 0, sd = s1_sd)
+  }
+  # Initialize vector
+  s2 <- rep(1, n2)
+  # Put first value in
+  s2[1] <- s1[n1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
+  # Simulate second series
+  for (i in 2:n2){
+    s2[i] <- s2[i-1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
+  }
+  # Combine the two series
+  long <- as.matrix(c(s1, s2))
+  # Export the data
+  return(long)
+}
+
+# test <- lth_series[500,1]*(1)
+
+```
+
+
+
+
+
+
+```{r}
+#' Stock data generator for use in CAViaR simulation study
+#' For maximum flexibility, this will only generate one series with one variance and growth rate.
+#' Note that for simplicity, this is modeling the percentage change
+#' 
+#' @param t - number of time data points
+#' @param mu - the mean return in a given day
+#' @param sigma - the standard deviation
+#' @param rseed - random seed for reproducibility. Default is NULL
+#'
+#' @return - output percentage changes of a stock
+#' @export
+#'
+#' @examples dat_gen(1000, 0.001, 0.1)
+dat_gen = function(t, mu, sigma, rseed = NULL){
+  # Have an option for with and without random seed
+  if (is.null(rseed) == TRUE){
+    dat = rnorm(t, mu, sigma)
+  }
+  else {
+    set.seed(rseed)
+    dat = rnorm(t, mu, sigma)
+  }
+  return(dat)
+}
+
+# mean(dat_gen(1000, 0.001, 0.1))
+
+```
+
+```{r}
+# Generalize the above vector to look at many different periods
+
+
+```
 
 # JUNK CODE
 
