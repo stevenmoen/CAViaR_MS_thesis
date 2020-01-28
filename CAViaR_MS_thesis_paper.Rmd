@@ -494,9 +494,9 @@ Now that we have the function, let's see if we can get it to work. First, we'll 
 #' @export
 #'
 #' @examples - diff_index_df(c("XLF", "XLE", "PSCT", "XLV", "VPU", "XLP", "IGF", "XWEB", "PPTY"))
-diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1){
+diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date()){
   # Pull in response variable
-  response_pull = getSymbols(resp_var, auto.assign = FALSE)
+  response_pull = getSymbols(resp_var, auto.assign = FALSE, from = start_date, to = end_date)
   # Get adjusted closing price
   if (adj_close == TRUE){
     diff_df = Ad(response_pull)
@@ -506,7 +506,7 @@ diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_clos
   # Loop through the symbols and join in data
   for (i in 1:length(symbol_list)){
     # Pull closing price
-    expl_pull = getSymbols(symbol_list[i], auto.assign = FALSE)
+    expl_pull = getSymbols(symbol_list[i], auto.assign = FALSE, from = start_date, to = end_date)
     # Extract closing price - 4th element
     if (adj_close == TRUE){
       expl_cl = Ad(expl_pull)
@@ -525,6 +525,25 @@ diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_clos
   # Difference data
   return(diff_df_out)
 }
+
+?getSymbols
+```
+
+
+Now, let's test it. Moment of truth.
+
+```{r}
+# See what the 5% and 1% VaR levels look like
+var_5pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.05)
+var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
+
+# Create a plot
+ts.plot(pc_df[101:400,1])
+lines(var_5pc$yhat[1:300], col = "blue", lty = 2)
+lines(var_1pc$yhat[1:300], col = "red", lty = 2)
+
+# Calculate accuracy
+var_1pc$yhat
 ```
 
 ```{r, cache = TRUE}
@@ -550,29 +569,140 @@ pc_diff_index = function(diff_df){
 
 
 ```{r}
-df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG")
+df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
 pc_df = pc_diff_index(df)
+
+# Check the dimensions
+dim(pc_df)
+# head(pc_df)
+# tail(pc_df)
 ```
 
 ```{r}
-# pc_df
+# Decide on the optimal number of vectors.
+
+# (y, x, orig, m, tau) 
+
+#' Function that calculates loss over a given period of time for the diffusion index model
+#'
+#' @param y - response variables
+#' @param x - explanatory variable
+#' @param orig - forecast origin
+#' @param end - forecasting ending
+#' @param m - number of diffusion indices to use
+#' @param tau - VaR level
+#'
+#' @return - returns a list of the loss sum and the loss vector
+#' @export
+#'
+#' @examples - loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)
+loss_calc = function(y, x, orig, end, m, tau){
+  # Extract y_hat values
+  di = mod_di(y,x,orig,m, tau)
+  yhat = di$yhat[1:(end-orig)]
+  # Calculate the loss
+  # Initialize loss vector
+  lvec = rep(0,(end-orig))
+  # Take the difference
+  for (i in 1:(end-orig)){
+    # Calculate an indicator variable
+    ind = ifelse(y[orig+i] < yhat[i], 1,0)
+    # Use indicator in function below
+    lvec[i] = (tau - ind)*(y[orig+i] - yhat[i])
+  }
+  # Add up the losses
+  sumloss = sum(lvec)/length(lvec)
+  return(list(sumloss,lvec))
+}
+
+test = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)
+# test
+
+
+# abc = mod_di(pc_df[,1], pc_df[,-1], 757,1,0.01)
+# abc$yhat
+
 ```
 
-Now, let's test it. Moment of truth.
+```{r}
+# Write a number to select the optimal number of predictors
+opt_m = function(y, x, orig, end, tau, low_m = 1, high_m){
+  # Initialize a loss vector
+  loss_vec = rep(0,high_m-low_m + 1)
+  # Initialize an m vector
+  m_vec = seq(low_m, high_m, by = 1)
+  # Loop through and populate the loss vector
+  for (i in 1:length(loss_vec)){
+    loss_vec[i] = loss_calc(y=y,x=x,orig=orig,end=end, m = m_vec[i], tau = tau)[[1]]
+  }
+  # Find the minimizer
+  opt_m = which.min(loss_vec)
+  # Return the loss_vector and the minimzer
+  return(list(opt_m, loss_vec))
+}
+
+opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
+
+# test1 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)[[1]]
+# test2 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 2, 0.01)[[1]]
+# test3 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 3, 0.01)[[1]]
+# test4 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 4, 0.01)[[1]]
+# test5 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 5, 0.01)[[1]]
+
+# print(c(test1, test2, test3, test4, test5))
+
+```
+
+Now we have the optimal number of indices to use, which in this case is 3.
 
 ```{r}
-# See what the 5% and 1% VaR levels look like
-var_5pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.05)
-var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
+# Run the model
+mv_fcst = mod_di(pc_df[,1], pc_df[,-1], 1027, 3, 0.01)
 
+# length(pc_df[,1])
+
+# Run the univariate CAViaR models
+uvcav_1 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 1, G = 10, col = 1, level = 0.01)
+# uvcav_2 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 2, G = 10, col = 1)
+# uvcav_3 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 3, G = 10, col = 1)
+# uvcav_4 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 4, G = 10, col = 1)
+```
+
+```{r}
 # Create a plot
-ts.plot(pc_df[101:400,1])
-lines(var_5pc$yhat[1:300], col = "blue", lty = 2)
-lines(var_1pc$yhat[1:300], col = "red", lty = 2)
+ts.plot(pc_df[1028:1257,1])
+lines(mv_fcst$yhat[1:250], col = "blue", lty = 2)
+lines(as.ts(uvcav_1[1028:1257])*(-1), col = "red", lty = 2)
+# length(uvcav_1)
 
-# Calculate accuracy
-var_1pc$yhat
+# 
+    # Calculate an indicator variable
+    ind = ifelse(y[orig+i] < yhat[i], 1,0)
+    # Use indicator in function below
+    lvec[i] = (tau - ind)*(y[orig+i] - yhat[i])
+
+
+uvcav_1
+
+# lines(var_1pc$yhat[1:300], col = "red", lty = 2)
+
+# mod_di = function (y, x, orig, m, tau) 
+
+ts.plot(mv_fcst$yhat)
+lines(pc_df[1028:1257,1], col = "red")
 ```
+
+
+```{r}
+var_1pc_k1 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
+var_1pc_k3 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
+var_1pc_k5 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
+
+# var_1pc_k3
+
+
+```
+
 
 # Stock simulation
 
