@@ -625,7 +625,20 @@ test = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)
 ```
 
 ```{r}
-# Write a number to select the optimal number of predictors
+#' Function that selects the optimal number of predictors
+#'
+#' @param y - response vector
+#' @param x - predictor variables
+#' @param orig - forecast origin
+#' @param end - ending of validation set
+#' @param tau - VaR in question
+#' @param low_m - low value of m to consider
+#' @param high_m - high value of m to consider
+#'
+#' @return - returns the optimal value of m
+#' @export
+#'
+#' @examples - opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
 opt_m = function(y, x, orig, end, tau, low_m = 1, high_m){
   # Initialize a loss vector
   loss_vec = rep(0,high_m-low_m + 1)
@@ -657,29 +670,82 @@ Now we have the optimal number of indices to use, which in this case is 3.
 
 ```{r}
 # Run the model
-mv_fcst = mod_di(pc_df[,1], pc_df[,-1], 1027, 3, 0.01)
+# mv_fcst = mod_di(pc_df[,1], pc_df[,-1], 1027, 3, 0.01)
 
 # length(pc_df[,1])
 
 # Run the univariate CAViaR models
-uvcav_1 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 1, G = 10, col = 1, level = 0.01)
-# uvcav_2 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 2, G = 10, col = 1)
-# uvcav_3 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 3, G = 10, col = 1)
-# uvcav_4 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 4, G = 10, col = 1)
+# uvcav_1 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 1, G = 10, col = 1, level = 0.01)
+uvcav_2 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 2, G = 10, col = 1, level = 0.01)
+uvcav_3 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 3, G = 10, col = 1, level = 0.01)
+uvcav_4 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 4, G = 10, col = 1, level = 0.01)
 ```
 
 ```{r}
 # Create a plot
-ts.plot(pc_df[1028:1257,1])
+ts.plot(pc_df[1028:1257,1], ylim = c(-0.1,0.1), xlab = "Trading Days", ylab = "Percent Change in PG")
 lines(mv_fcst$yhat[1:250], col = "blue", lty = 2)
 lines(as.ts(uvcav_1[1028:1257])*(-1), col = "red", lty = 2)
+lines(as.ts(uvcav_2[1028:1257])*(-1), col = "green", lty = 2)
+lines(as.ts(uvcav_3[1028:1257])*(-1), col = "orange", lty = 2)
+lines(as.ts(uvcav_4[1028:1257])*(-1), col = "purple", lty = 2)
 # length(uvcav_1)
+```
 
-# 
+```{r}
+# Write a function to calculate losses on the test sample
+#' A function to calculate losses based on the test sample
+#'
+#' @param true_vec - the true vector of returns
+#' @param pred_vec - the predicted vector from the model runs
+#' @param tau - VaR level. Must match what the model used
+#'
+#' @return - total losses and the entire loss vector
+#' @export
+#'
+#' @examples
+loss_test = function(true_vec, pred_vec, tau){
+  # Initialize a loss vector
+  lvec = rep(0, length(true_vec))
+  # Initialize a break vector to see when VaR is broken
+  bvec = rep(0, length(true_vec))
+  for (i in 1:length(true_vec)){
     # Calculate an indicator variable
-    ind = ifelse(y[orig+i] < yhat[i], 1,0)
+    bvec[i] = ifelse(true_vec[i] < pred_vec[i], 1,0)
     # Use indicator in function below
-    lvec[i] = (tau - ind)*(y[orig+i] - yhat[i])
+    lvec[i] = (tau - bvec[i])*(true_vec[i] - pred_vec[i])
+  }
+  # Add up the losses
+  sumloss = sum(lvec)/length(lvec)
+  # Add up the VaR breakage
+  varbreak = sum(bvec)/length(bvec)
+  return(list(sumloss,lvec, varbreak, bvec))
+}
+```
+
+
+```{r}
+# Calculate the losses
+loss_mv = loss_test(pc_df[1028:1257,1], mv_fcst$yhat[1:250], tau = 0.01)[[1]]
+loss_uv1 = loss_test(pc_df[1028:1257,1], as.ts(uvcav_1[1028:1257])*(-1), tau = 0.01)[[1]]
+
+print(c(loss_mv, loss_uv1))
+
+# Calculate the VaR breaks
+break_mv = loss_test(pc_df[1028:1257,1], mv_fcst$yhat[1:250], tau = 0.01)[[3]]
+break_uv1 = loss_test(pc_df[1028:1257,1], as.ts(uvcav_1[1028:1257])*(-1), tau = 0.01)[[3]]
+
+print(c(break_mv, break_uv1))
+
+
+```
+
+
+```{r}
+# Calculate an indicator variable
+ind = ifelse(y[orig+i] < yhat[i], 1,0)
+# Use indicator in function below
+lvec[i] = (tau - ind)*(y[orig+i] - yhat[i])
 
 
 uvcav_1
