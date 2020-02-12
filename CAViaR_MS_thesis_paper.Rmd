@@ -914,4 +914,41 @@ col_se = sqrt(apply(test_mat, 2, var))
 # Test the matrix multiplication
 ```
 
+```{r}
+# Test to see if using lag is possible in general LM model
+
+# Set random seed
+set.seed(100)
+# ?rnorm
+y <- rnorm(1000)
+x <- matrix(0,1000,10)
+for (i in 1:10){
+  x[,i] <- rnorm(1000)
+}
+
+# First, see if it's possible to do it with a lag
+l1_y = lag(as.ts(y), k = 1)
+l1_y
+
+
+# Fit model
+arima(y, c(1,0,0))
+arima
+head(l1_y)
+head(y)
+y_t = y[-1]
+l1_y
+# as.vector(l1_y)
+
+# y_t
+# l1_y
+length(y_t)
+length(l1_y)
+
+ar_lag <- lm(y_t ~ as.vector(l1_y))
+# ?lag
+summary(ar_lag)
+
+
+```
 
