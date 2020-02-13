@@ -928,12 +928,12 @@ for (i in 1:10){
 
 # First, see if it's possible to do it with a lag
 l1_y = lag(as.ts(y), k = 1)
-l1_y
+# l1_y
 
 
 # Fit model
 arima(y, c(1,0,0))
-arima
+# arima
 head(l1_y)
 head(y)
 y_t = y[-1]
@@ -951,4 +951,24 @@ summary(ar_lag)
 
 
 ```
+
+```{r}
+df[1:5,]
+
+# Let's take the first variable, lag it, and then append it
+
+# Poor man's lag
+pg_lag = c(NA, pc_df[-length(pc_df),1])
+# pml
+
+# Append to the data frame
+pc_df2 = cbind(pc_df,pg_lag)
+pc_trim = pc_df2[-1,]
+
+# Run the rq regression
+rq_test = rq(pc_trim[,1] ~ pc_trim[,-1], tau = 0.01)
+summary(rq_test)
+
+```
+
 
