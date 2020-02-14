@@ -485,6 +485,116 @@ mod_di = function (y, x, orig, m, tau)
 
 Now that we have the function, let's see if we can get it to work. First, we'll need to compile all of our data
 
+Let's add a code which incorporates the previous values of the return.
+
+```{r}
+#' Below is the modified diffusion index code.
+#'
+#' @param y - response variable
+#' @param x - predictor variables
+#' @param orig - forecast origin
+#' @param m - number of diffusion indexes used
+#' @param tau - VaR level to use; must be between 0 and 1
+#' @param model - model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+#'
+#' @return - returns a list of variables for use in the diffusion index
+#' @export
+#'
+#' @examples
+mod_di_w_lag = function (y, x, orig, m, tau, model) 
+{
+  # Converts the response variables into a matrix
+  if (!is.matrix(x)) 
+      x = as.matrix(x)
+  # nT is number of t time-steps
+  nT = dim(x)[1]
+  # k is the number of diffusion indices used
+  k = dim(x)[2]
+  # Sanity checks to ensure that the origin isn't past the number of time points
+  if (orig > nT) 
+      orig = nT
+  # Makes sure that there aren't more predictors than there variables in the dataset
+  if (m > k) 
+      m = k
+  # Makes sure there are at least some variables
+  if (m < 1) 
+      m = 1
+  # Subdivides the dataframe
+  x1 = x[1:orig, ]
+  # Calculates means of each row
+  me = apply(x1, 2, mean)
+  # Calculates standard deviations of each column
+  se = sqrt(apply(x1, 2, var))
+  # Creates a matrix x1, which normalizes all the columns. 
+  # This may be an issue since it assumes that the distribution is sufficiently described by the first two moments
+  x1 = x
+  for (i in 1:k) {
+      x1[, i] = (x1[, i] - me[i])/se[i]
+  }
+  V1 = cov(x1[1:orig, ])
+  # Performs an eigen decomposition
+  m1 = eigen(V1)
+  # Selects eigenvalues
+  sdev = m1$values
+  # Selects eigenvectors
+  M = m1$vectors
+  # Makes a smaller matrix
+  M1 = M[, 1:m]
+  # This is the diffusion index model - [orig x p]*[p x m] = [orig x m]
+  Dindex = x1 %*% M1
+  # Cut down both the response and predictors to be a reasonable size
+  y1 = y[1:orig]
+  DF = Dindex[1:orig, ]
+  # Add in the previous predictors
+  # Lag the y-variable
+  lag_y1 = c(NA, y1[-length(y1)])
+  # Find the empirical average of the VaR up until the data
+  emp_qnt = quantile(y1, tau)
+  # Note on 2/13 - this code has a subdivision based on the number of observations. I am making no such division
+  # However, this could prove important. Below is from the code originally found online
+  # emp_qnt <- if (obs < 300){
+    # quantile(data[1:obs], pval)  
+  # } else {
+    # quantile(data[1:300], pval)
+  # }
+  # Now we must include the incorporation for the different types of VaR. 
+  # We'll use the same labeling as before.
+  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) (defaults to 1)
+  # 1 - SAV
+  if (model == 1){
+    DF_mod = cbind(pc_df, emp_qnt)
+  }
+  # Append to the data frame
+  pc_df2 = cbind(pc_df,pg_lag)
+  pc_trim = pc_df2[-1,]
+  # Apply the linear model - HERE is the key.
+  # mm = lm(y1 ~ DF) - old function
+  mm = rq(y1 ~ DF, tau = tau)
+  # Puts coefficients in a matrix
+  coef = matrix(mm$coefficients, (m + 1), 1)
+  # Initializes yhat variables and MSE
+  yhat = NULL
+  MSE = NULL
+  if (orig < nT) {
+    # Creates a nfcst by (m+1) matrix
+    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, 
+        ])
+    # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
+    yhat = newx %*% coef
+    # Calculates errors
+    err = y[(orig + 1):nT] - yhat
+    MSE = mean(err^2)
+    cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+  }
+  SWfore <- list(coef = coef, yhat = yhat, MSE = MSE, loadings = M1, 
+      DFindex = Dindex)
+}
+
+
+
+# ?cbind
+```
+
 ```{r, cache = TRUE}
 #' This is a function which creates a data frame for the response and explanatory variables that we'll feed into the diffusion index
 #'
@@ -971,4 +1081,8 @@ summary(rq_test)
 
 ```
 
+```{r}
+rns = rnorm(1000)
+quantile(rns, 0.01)
+```
 
