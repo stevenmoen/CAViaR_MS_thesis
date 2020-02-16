@@ -488,20 +488,23 @@ Now that we have the function, let's see if we can get it to work. First, we'll 
 Let's add a code which incorporates the previous values of the return.
 
 ```{r}
-#' Below is the modified diffusion index code.
+#' Below is the modified diffusion index code to include lagged variables.
 #'
 #' @param y - response variable
 #' @param x - predictor variables
 #' @param orig - forecast origin
 #' @param m - number of diffusion indexes used
 #' @param tau - VaR level to use; must be between 0 and 1
+#' @param ar_tf - AR transformation type. (1 - no transformation,
+#' 2 - absolute value, 3 - asymmetric slope)
+#' @param p - number of AR lags to include. Default is one.
 #' @param model - model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
 #'
 #' @return - returns a list of variables for use in the diffusion index
 #' @export
 #'
 #' @examples
-mod_di_w_lag = function (y, x, orig, m, tau, model) 
+mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, model = 1) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
@@ -547,9 +550,12 @@ mod_di_w_lag = function (y, x, orig, m, tau, model)
   DF = Dindex[1:orig, ]
   # Add in the previous predictors
   # Lag the y-variable
-  lag_y1 = c(NA, y1[-length(y1)])
+  ar_y1 = c(NA, y[-length(y)])
+  lag_y1 = ar_y1[1:orig]
+  # lag_y1 = c(NA, y1[-length(y1)])
+  # Will come back to the MA part
   # Find the empirical average of the VaR up until the data
-  emp_qnt = quantile(y1, tau)
+  # emp_qnt = quantile(y1, tau)
   # Note on 2/13 - this code has a subdivision based on the number of observations. I am making no such division
   # However, this could prove important. Below is from the code originally found online
   # emp_qnt <- if (obs < 300){
@@ -561,24 +567,55 @@ mod_di_w_lag = function (y, x, orig, m, tau, model)
   # We'll use the same labeling as before.
   # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) (defaults to 1)
   # 1 - SAV
-  if (model == 1){
-    DF_mod = cbind(pc_df, emp_qnt)
-  }
-  # Append to the data frame
-  pc_df2 = cbind(pc_df,pg_lag)
-  pc_trim = pc_df2[-1,]
+  # if (model == 1){
+    # DF_mod = cbind(pc_df, emp_qnt)
+  # }
+  # Append the first lag to the data frame
+  DF_wl = cbind(DF,lag_y1)
+  # Cut off the first row to avoid NA's
+  DF_trim = DF_wl[-1,]
+  # print(DF_trim)
+  # print(dim(DF_trim))
   # Apply the linear model - HERE is the key.
   # mm = lm(y1 ~ DF) - old function
-  mm = rq(y1 ~ DF, tau = tau)
-  # Puts coefficients in a matrix
-  coef = matrix(mm$coefficients, (m + 1), 1)
+  # mm = rq(y1 ~ DF, tau = tau)
+  # Here's the new function with an untransformed AR(1) lag
+  if (ar_tf == 1){
+    mm = rq(y1[-(1:p)] ~ DF_trim, tau = tau)
+  }
+  # Here's the new function with an SAV AR(1) lag
+  # Identify the lagged term
+  ar = ncol(DF_trim)
+  if (ar_tf == 2){
+    mm = rq(y1[-(1:p)] ~ DF_trim[,-ar] + abs(DF_trim[,ar]), tau = tau)
+  }
+  # Here's the new function with an asymmetric slope for the AR(1) lag
+  # Indicator; 0 if percent change is negative, 1 if it's positive
+  indi = ifelse(DF_trim[,ar] < 0, 0, 1)
+  # Fitting the regression
+  # summary(fit <- lm(pgas~ poil + poilL + indi, data=mess))
+  if (ar_tf == 3){
+    mm = rq(y1[-(1:p)] ~ DF_trim[,-ar] + DF_trim[,ar] + indi, tau = tau)
+    # Add a different line to account for the indicator variable
+    coef = matrix(mm$coefficients, (m + 3), 1)
+  }
+  # Puts coefficients in a matrix - added the AR terms
+  # coef = matrix(mm$coefficients, (m + 1), 1)
+  if (ar_tf != 3){
+    coef = matrix(mm$coefficients, (m + 2), 1)
+  }
   # Initializes yhat variables and MSE
   yhat = NULL
   MSE = NULL
   if (orig < nT) {
-    # Creates a nfcst by (m+1) matrix
-    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, 
-        ])
+    # Creates a nfcst by (m+2) matrix
+    # newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ])
+    # Add on the lagged variables
+    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], ar_y1[(orig+1):nT])
+    # Incorporate lagged variables
+    if (ar_tf == 3){
+      newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], ar_y1[(orig+1):nT], ifelse(ar_y1[(orig+1):nT] < 0,0,1))
+    }
     # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
     yhat = newx %*% coef
     # Calculates errors
@@ -590,9 +627,15 @@ mod_di_w_lag = function (y, x, orig, m, tau, model)
       DFindex = Dindex)
 }
 
+```
 
+Let's test to see if the new functions work.
 
-# ?cbind
+```{r}
+var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
+var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 1)
+var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2)
+var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3)
 ```
 
 ```{r, cache = TRUE}
@@ -638,8 +681,9 @@ diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_clos
   return(diff_df_out)
 }
 
-?getSymbols
 ```
+
+
 
 
 Now, let's test it. Moment of truth.
@@ -657,7 +701,7 @@ lines(var_1pc$yhat[1:300], col = "red", lty = 2)
 # Calculate accuracy
 var_1pc$yhat
 ```
-
+ß
 ```{r, cache = TRUE}
 #' Converts a diff_df into a data frame with approximate percentage changes diff(log(diff_df))
 #'
