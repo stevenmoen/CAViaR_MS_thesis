@@ -1359,7 +1359,7 @@ This function uses an absolute reference to the number of forecasts to perform. 
 #' @export
 #'
 #' @examples
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
+cav_simul_OLD = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
   # Select data parameters, pull the data, and percent change the data
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
   # Take the percent change of the data
