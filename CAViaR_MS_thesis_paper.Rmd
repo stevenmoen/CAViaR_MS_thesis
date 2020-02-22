@@ -875,6 +875,67 @@ mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 3)
 ```
 
 ```{r}
+#' Here is a function that runs the univariate CAViaR model 4 times
+#'
+#' @param df - the percent change data frame to consider
+#' @param nfcst - number of forecasts to run
+#' @param tau - the VaR level to consider
+#' @param no_run - specifies if any models should not be run
+#'
+#' @return - a list of the 4 univariate model forecasts
+#' @export
+#'
+#' @examples - aceg = gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
+gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
+  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+  # Initialize a list  
+  out_list = list()
+  # Run the four models - model 1; SAV
+  if (no_run[1] == 0){
+    uvcav_1 = rolling_predictions(df[,1], range_data = (1:length(df[,1])), nfcst = nfcst, model = 1, G = 10, col = 1, level = tau)
+  }
+  # Add a filler if there's no entry
+  else {
+    uvcav_1 = 0
+  }
+  # Model 2 - AS
+  if (no_run[2] == 0){
+    uvcav_2 = rolling_predictions(df[,1], range_data = (1:length(df[,1])), nfcst = nfcst, model = 2, G = 10, col = 1, level = tau)
+  }
+  else {
+    uvcav_2 = 0
+  }
+  # Model 3 - GARCH
+  if (no_run[3] == 0){
+    uvcav_3 = rolling_predictions(df[,1], range_data = (1:length(df[,1])), nfcst = nfcst, model = 3, G = 10, col = 1, level = tau)
+  }
+  else {
+    uvcav_3 = 0
+  }
+  # Model 4 - GARCH
+  if (no_run[4] == 0){
+    uvcav_4 = rolling_predictions(df[,1], range_data = (1:length(df[,1])), nfcst = nfcst, model = 4, G = 10, col = 1, level = tau)
+  }
+  else {
+    uvcav_4 = 0
+  }
+  # Export the data as a list
+  return(list(uvcav_1, uvcav_2, uvcav_3, uvcav_4))
+}
+
+# blah = list()
+```
+
+```{r}
+aceg = gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
+tail(aceg[[1]])
+tail(aceg[[2]])
+tail(aceg[[3]])
+tail(aceg[[4]])
+```
+
+
+```{r}
 # Combine everything into a plot matrix
 # uvcav_1
 plot_mat = cbind(pc_df[1008:1257,1], mv_fcst$yhat[1:250], mv_fcst_art1$yhat[1:250], mv_fcst_art2$yhat[1:250], mv_fcst_art3$yhat[1:250], uvcav_1[1008:1257]*(-1), uvcav_2[1008:1257]*(-1), uvcav_3[1008:1257]*(-1), uvcav_4[1008:1257]*(-1))
@@ -1089,39 +1150,100 @@ var_1pc_k5 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
 ```
 
 ```{r}
-# Big function
-
-# function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date())
-# df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
-# pc_df = pc_diff_index(df)
-
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), orig, end, tau, low_m = 1, high_m, ){
+#' This is the "master" function where we'll evaluate the importance of the VaR model over several time periods
+#'
+#' @param symbol_list - a list of symbols to feed into the model 
+#' @param resp_var - the response variable
+#' @param compl_case - should the model require complete cases? Default value is 1.
+#' @param adj_close - use adjusted close price for the predictors? Default value is 1.
+#' @param resp_adj_close - use adjusted close price for the response? Default value is 1.
+#' @param start_date - start date to pull data from
+#' @param end_date - end date to pull data from
+#' @param nval - number of validation points to use
+#' @param ntest - number of test points to use
+#' @param tau - VaR level to use
+#' @param low_m - low number of predictors to test
+#' @param high_m  - low number of predictors to test
+#' @param uv_list - a list of a pre-run univariate model. If a data frame is not provided, the lengthy uv model will run 
+#' @param no_run - things not to run in the model
+#'
+#' @return - a list of the plot matrix, a plot, a list with losses, and a table
+#' @export - a plot and a table
+#'
+#' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, uv_list = NULL, no_run = c(0,0,0,0)){
   # Select data parameters, pull the data, and percent change the data
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
   # Take the percent change of the data
   pc_df = pc_diff_index(df)
+  # Extract the legnth of the data frame
+  nr = test_end = nrow(pc_df)
+  # Calculate the start of the val period, the end of the val period, and the beginning and end of test period  
+  test_orig = test_end - ntest
+  val_end = test_orig
+  val_orig = test_orig - nval
+  # nrow = 100; ntest = 10; nval = 10
+  # test_orig should be 90, val_orig should be 80.
+  # test_org = 100 - 10 = 90, implying 91 to 100 should be tested
+  # val_end = 90, val_start should be 80, implying 81 to 90 should be tested
   # Test for the optimal number of parameters
-  opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = orig, end = end, tau = tau, low_m = low_m, high_m = high_m)
-  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = orig, end = end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1)
-  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = orig, end = end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2)
-  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = orig, end = end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3)
+  opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m)
+  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1)
+  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2)
+  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3)
+  # gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
   # Use the above forecasts to input into the above
-  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], 1007, 3, 0.01)
-  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 1)
-  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 2)
-  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 3)
+  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau)
+  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1)
+  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2)
+  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3)
+  # Calculate the number of predictions
+  if (is.null(uv_list) == TRUE){
+    # Print a warning
+    print("WARNING: Not supplying an input data frame will require this function to run for a significant amount of time (1hr+)")
+    # Call the function
+    uv_list = gen_uv_test(pc_df, ntest, tau, no_run = no_run)
+  }
+  # npred = (nrow(pc_df)-(test_orig))
   # Incorporate the rolling predictions function results here
-  # Combine everything into the matrix
+  plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_cav_list[[1]][(test_orig+1):test_end]*(-1), uv_cav_list[[2]][(test_orig+1):test_end]*(-1), uv_cav_list[[3]][(test_orig+1):test_end]*(-1), uv_cav_list[[4]][(test_orig+1):test_end]*(-1))
+  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+  # Add descriptive titles onto the plot_mat
+  colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
-  # Create tables
-  # function(y, x, orig, end, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1){
-  # opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5)
-  # opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
-  # opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
-  # opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
-
+  plot = plt_data(plot_mat)
+  # Calculate losses
+  l_list = gen_loss_test(plot_mat, tau = tau)
+  # Put into tables
+  tables = pretty_tables(plot_mat, l_list)
+  # Print the tables and the plot
+  print(plot)
+  print(tables)
+  return(list(plot_mat, plot, l_list, tables))
 }
 ```
+
+To test this function, we're going to combine all the univariate CAViaR parts into one list - STM 2/22/20.
+
+```{r}
+uv_cav_list = list(uvcav_1, uvcav_2, uvcav_3, uvcav_4)
+```
+
+
+```{r}
+# function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
+# Test the big function
+big_test_mod = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
+
+head(big_test[[1]])
+nrow(big_test[[1]])
+nrow(big_test_mod[[1]])
+head(big_test_mod[[1]])
+big_test_mod[[4]]
+big_test[[4]]
+# diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
+```
+
 
 # Stock simulation
 
@@ -1211,6 +1333,68 @@ dat_gen = function(t, mu, sigma, rseed = NULL){
 ```
 
 # JUNK CODE
+
+This function uses an absolute reference to the number of forecasts to perform. I'm changing this to make it compatible with the uv_cav1 model.
+
+```{r}
+
+#' This is the "master" function where we'll evaluate the importance of the VaR model over several time periods
+#'
+#' @param symbol_list - a list of symbols to feed into the model 
+#' @param resp_var - the response variable
+#' @param compl_case - should the model require complete cases? Default value is 1.
+#' @param adj_close - use adjusted close price for the predictors? Default value is 1.
+#' @param resp_adj_close - use adjusted close price for the response? Default value is 1.
+#' @param start_date - start date to pull data from
+#' @param end_date - end date to pull data from
+#' @param val_orig - start of the validation period
+#' @param val_end - end of the validation period
+#' @param test_orig - start of the test period
+#' @param tau - VaR level to use
+#' @param low_m - low number of predictors to test
+#' @param high_m  - low number of predictors to test
+#' @param uv_list 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
+  # Select data parameters, pull the data, and percent change the data
+  df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
+  # Take the percent change of the data
+  pc_df = pc_diff_index(df)
+  # Test for the optimal number of parameters
+  opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m)
+  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1)
+  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2)
+  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3)
+  # gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
+  # Use the above forecasts to input into the above
+  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau)
+  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1)
+  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2)
+  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3)
+  # Calculate the number of predictions
+  npred = (nrow(pc_df)-(test_orig))
+  # Incorporate the rolling predictions function results here
+  plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:npred], mv_fcst_art1$yhat[1:npred], mv_fcst_art2$yhat[1:npred], mv_fcst_art3$yhat[1:npred], uvcav_1[(test_orig+1):nrow(pc_df)]*(-1), uvcav_2[(test_orig+1):nrow(pc_df)]*(-1), uvcav_3[(test_orig+1):nrow(pc_df)]*(-1), uvcav_4[(test_orig+1):nrow(pc_df)]*(-1))
+  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+  # Add descriptive titles onto the plot_mat
+  colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+  # Plot everything
+  plot = plt_data(plot_mat)
+  # Calculate losses
+  l_list = gen_loss_test(plot_mat, tau = tau)
+  # Put into tables
+  tables = pretty_tables(plot_mat, l_list)
+  # Print the tables and the plot
+  print(plot)
+  print(tables)
+  return(list(plot_mat, plot, l_list, tables))
+}
+```
+
 
 ```{r}
 # Testing to see how apply function works
