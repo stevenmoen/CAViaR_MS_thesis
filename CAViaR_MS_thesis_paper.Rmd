@@ -28,6 +28,9 @@ Fill in.
 
 # Results
 
+# CODE
+
+## Libraries
 
 ```{r}
 # Read in relevant libraries
@@ -53,6 +56,7 @@ source('caviar_SM.R')
 # This code below is for use in the CAViaR sections.
 ```
 
+## Univariate CAViaR Section
 
 ```{r}
 #' This is a function which pulls data for use in the CAViaR model
@@ -160,7 +164,7 @@ rolling_predictions = function(input_data, range_data = (2:dim(input_data)[1]), 
 #' @export - a plot of the data
 #'
 #' @examples
-loss_calc = function(symbol, start_dt, end_dt, nfcst, model = 1, level = 0.01, G = 5){
+loss_calc_uv = function(symbol, start_dt, end_dt, nfcst, model = 1, level = 0.01, G = 5){
   # Pull in the data
   raw_data = data_pull(symbol, start_date = start_dt, end_date = end_dt)
   # Forecast based on the data
@@ -229,6 +233,8 @@ stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
 
 # Below is for the simulation study
 ```
+
+## Simulation Studies
 
 ```{r}
 # Low to high volatility series
@@ -343,7 +349,92 @@ lines(m1_hth_sm_is_01[1:10], col = "green")
 # We may need to expand this to other areas. Ask Wei Biao for simulation advice.
 ```
 
+## Multivariate Simulation Study
 
+Real data is messy, but simulation could give us some idea of whether combining all the stocks into a pool could give a lift.
+
+```{r}
+#' Stock simulation for use in CAViaR simulation study
+#'
+#' @param n1 - number of data points in first series
+#' @param n2 - number of data points in second series
+#' @param s1_sd - standard deviation of first series
+#' @param s2_sd - standard deviation of second series 
+#' @param s1_mean - mean of first series 
+#' @param s2_mean - mean of second series 
+#' @param rseed - random seed for reproducibility
+#'
+#' @return - output time series
+#' @export
+#'
+#' @examples hth_series = stock_simul(100, 25, 10, 10)
+stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
+  # Set random seed
+  set.seed(rseed)
+  # Initialize vector and put first value in the series
+  s1 <- rep(1, n1)
+  # Simulate first series
+  for (i in 2:n1){
+    s1[i] <- s1[i-1]*(1+s1_gr) + rnorm(1, mean = 0, sd = s1_sd)
+  }
+  # Initialize vector
+  s2 <- rep(1, n2)
+  # Put first value in
+  s2[1] <- s1[n1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
+  # Simulate second series
+  for (i in 2:n2){
+    s2[i] <- s2[i-1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
+  }
+  # Combine the two series
+  long <- as.matrix(c(s1, s2))
+  # Export the data
+  return(long)
+}
+
+# test <- lth_series[500,1]*(1)
+
+```
+
+
+
+
+
+
+```{r}
+#' Stock data generator for use in CAViaR simulation study
+#' For maximum flexibility, this will only generate one series with one variance and growth rate.
+#' Note that for simplicity, this is modeling the percentage change
+#' 
+#' @param t - number of time data points
+#' @param mu - the mean return in a given day
+#' @param sigma - the standard deviation
+#' @param rseed - random seed for reproducibility. Default is NULL
+#'
+#' @return - output percentage changes of a stock
+#' @export
+#'
+#' @examples dat_gen(1000, 0.001, 0.1)
+dat_gen = function(t, mu, sigma, rseed = NULL){
+  # Have an option for with and without random seed
+  if (is.null(rseed) == TRUE){
+    dat = rnorm(t, mu, sigma)
+  }
+  else {
+    set.seed(rseed)
+    dat = rnorm(t, mu, sigma)
+  }
+  return(dat)
+}
+
+# mean(dat_gen(1000, 0.001, 0.1))
+
+```
+
+```{r}
+# Generalize the above vector to look at many different periods
+
+
+```
 
 # Combining a Diffusion Index Model with the Quantile Regression Model
 
@@ -392,6 +483,85 @@ Let's just see if there is any merit to just regressing one set of stocks on ano
 # SWfore
 ```
 
+## MV Caviar - Pulling the data
+
+```{r, cache = TRUE}
+#' This is a function which creates a data frame for the response and explanatory variables that we'll feed into the diffusion index
+#'
+#' @param symbol_list - a list of symbols recognizable by the 
+#' @param resp_var - the response variable we'd like to forecast; default is SPY
+#' @param compl_case - defaults to true...only includes complete cases in the data
+#'
+#' @return - a data frame which can be fed into the SWfore function
+#' @export
+#'
+#' @examples - diff_index_df(c("XLF", "XLE", "PSCT", "XLV", "VPU", "XLP", "IGF", "XWEB", "PPTY"))
+diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date()){
+  # Pull in response variable
+  response_pull = getSymbols(resp_var, auto.assign = FALSE, from = start_date, to = end_date)
+  # Get adjusted closing price
+  if (adj_close == TRUE){
+    diff_df = Ad(response_pull)
+  } else {
+    diff_df = Cl(response_pull)
+  }
+  # Loop through the symbols and join in data
+  for (i in 1:length(symbol_list)){
+    # Pull closing price
+    expl_pull = getSymbols(symbol_list[i], auto.assign = FALSE, from = start_date, to = end_date)
+    # Extract closing price - 4th element
+    if (adj_close == TRUE){
+      expl_cl = Ad(expl_pull)
+    } else {
+      expl_cl = Cl(expl_pull)
+    }
+    # Join the data
+    diff_df = merge(diff_df, expl_cl, join = "left", fill = NA)
+  }
+  # Return complete cases only 
+  if (compl_case == TRUE){
+    diff_df_out = diff_df[complete.cases(diff_df), ]
+  } else{
+    diff_df_out = diff_df
+  }
+  # Difference data
+  return(diff_df_out)
+}
+
+```
+
+```{r, cache = TRUE}
+#' Converts a diff_df into a data frame with approximate percentage changes diff(log(diff_df))
+#'
+#' @param diff_df - output of the diff_index_df function with complete cases
+#'
+#' @return - retuns the differenced data
+#' @export
+#'
+#' @examples - pc_diff_index(test_compl) 
+
+pc_diff_index = function(diff_df){
+  # Difference the log of the data
+  pc_diff_index = diff(log(diff_df))
+  # Remove the first row
+  pc_diff_index_out = pc_diff_index[-1,]
+  return(pc_diff_index_out)
+}
+
+```
+
+```{r}
+df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
+pc_df = pc_diff_index(df)
+
+# Check the dimensions
+dim(pc_df)
+# head(pc_df)
+# tail(pc_df)
+```
+
+## MV Caviar - Modified DI code
+
 The code that is used in a diffusion index model is as follows. The key is figuring out where to make the extension. I'll go through and comment everything and see what's what.
 
 ```{r}
@@ -407,13 +577,17 @@ The code that is used in a diffusion index model is as follows. The key is figur
 #' @export
 #'
 #' @examples
-mod_di = function (y, x, orig, m, tau) 
+mod_di = function (y, x, orig, m, tau, end = NULL) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
       x = as.matrix(x)
   # nT is number of t time-steps
   nT = dim(x)[1]
+  # Add a line to establish the number of data points used in the test.
+  if (is.null(end) != TRUE){
+    nT = end
+  }
   # k is the number of diffusion indices used
   k = dim(x)[2]
   # Sanity checks to ensure that the origin isn't past the number of time points
@@ -464,6 +638,8 @@ mod_di = function (y, x, orig, m, tau)
     newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, 
         ])
     # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
+    # print(dim(newx))
+    # print(dim(coef))
     yhat = newx %*% coef
     # Calculates errors
     err = y[(orig + 1):nT] - yhat
@@ -474,9 +650,6 @@ mod_di = function (y, x, orig, m, tau)
       DFindex = Dindex)
 }
 
-
-
-# ?cbind
 ```
 
 Now that we have the function, let's see if we can get it to work. First, we'll need to compile all of our data
@@ -501,13 +674,18 @@ Let's add a code which incorporates the previous values of the return.
 #' @export
 #'
 #' @examples
-mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1) 
+mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
       x = as.matrix(x)
   # nT is number of t time-steps
   nT = dim(x)[1]
+  # Add a line to establish the number of data points used in the test.
+  if (is.null(end) != TRUE){
+    nT = end
+  }
+  print(nT)
   # k is the number of diffusion indices used
   k = dim(x)[2]
   # Sanity checks to ensure that the origin isn't past the number of time points
@@ -617,6 +795,8 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
       newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], ar_y1[(orig+1):nT], ifelse(ar_y1[(orig+1):nT] < 0,0,1))
     }
     # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
+    # print(dim(newx))
+    # print(dim(coef))
     yhat = newx %*% coef
     # Calculates errors
     err = y[(orig + 1):nT] - yhat
@@ -629,80 +809,12 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
 
 ```
 
-```{r, cache = TRUE}
-#' This is a function which creates a data frame for the response and explanatory variables that we'll feed into the diffusion index
-#'
-#' @param symbol_list - a list of symbols recognizable by the 
-#' @param resp_var - the response variable we'd like to forecast; default is SPY
-#' @param compl_case - defaults to true...only includes complete cases in the data
-#'
-#' @return - a data frame which can be fed into the SWfore function
-#' @export
-#'
-#' @examples - diff_index_df(c("XLF", "XLE", "PSCT", "XLV", "VPU", "XLP", "IGF", "XWEB", "PPTY"))
-diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date()){
-  # Pull in response variable
-  response_pull = getSymbols(resp_var, auto.assign = FALSE, from = start_date, to = end_date)
-  # Get adjusted closing price
-  if (adj_close == TRUE){
-    diff_df = Ad(response_pull)
-  } else {
-    diff_df = Cl(response_pull)
-  }
-  # Loop through the symbols and join in data
-  for (i in 1:length(symbol_list)){
-    # Pull closing price
-    expl_pull = getSymbols(symbol_list[i], auto.assign = FALSE, from = start_date, to = end_date)
-    # Extract closing price - 4th element
-    if (adj_close == TRUE){
-      expl_cl = Ad(expl_pull)
-    } else {
-      expl_cl = Cl(expl_pull)
-    }
-    # Join the data
-    diff_df = merge(diff_df, expl_cl, join = "left", fill = NA)
-  }
-  # Return complete cases only 
-  if (compl_case == TRUE){
-    diff_df_out = diff_df[complete.cases(diff_df), ]
-  } else{
-    diff_df_out = diff_df
-  }
-  # Difference data
-  return(diff_df_out)
-}
-
-```
-
-```{r, cache = TRUE}
-#' Converts a diff_df into a data frame with approximate percentage changes diff(log(diff_df))
-#'
-#' @param diff_df - output of the diff_index_df function with complete cases
-#'
-#' @return - retuns the differenced data
-#' @export
-#'
-#' @examples - pc_diff_index(test_compl) 
-
-pc_diff_index = function(diff_df){
-  # Difference the log of the data
-  pc_diff_index = diff(log(diff_df))
-  # Remove the first row
-  pc_diff_index_out = pc_diff_index[-1,]
-  return(pc_diff_index_out)
-}
-
-```
-
 ```{r}
-df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
-pc_df = pc_diff_index(df)
-
-# Check the dimensions
-dim(pc_df)
-# head(pc_df)
-# tail(pc_df)
+# mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = 1007, end = 1108, 3, 0.01, ar_tf = 3)
 ```
+
+
+
 
 Let's test to see if the new functions work.
 
@@ -744,7 +856,7 @@ var_1pc$yhat
 ```
 
 
-
+## MV Caviar - Calcuating losses
 
 ```{r}
 # Decide on the optimal number of vectors.
@@ -756,7 +868,7 @@ var_1pc$yhat
 #' @param y - response variables
 #' @param x - explanatory variable
 #' @param orig - forecast origin
-#' @param end - forecasting ending
+#' @param end - forecasting ending. Note: as the function is currently written on 2/24, this option doesn't do anything.
 #' @param m - number of diffusion indices to use
 #' @param tau - VaR level
 #' @param mod_di - use the modified DI?
@@ -765,13 +877,13 @@ var_1pc$yhat
 #' @export
 #'
 #' @examples - loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)
-loss_calc = function(y, x, orig, end, m, tau, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1){
+loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL){
   # Extract y_hat values
   if (mod_di == 0){
-    di = mod_di(y,x,orig,m, tau)
+    di = mod_di(y=y,x=x,orig=orig,m=m, tau=tau, end = end)
   }
   else {
-    di = mod_di_wl(y,x,orig,m, tau, ar_tf = ar_tf, p = p, print = print, model = model)
+    di = mod_di_wl(y=y,x=x,orig=orig,m=m, tau=tau, ar_tf = ar_tf, p = p, print = print, model = model, end = end)
   }
   # mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1)
   yhat = di$yhat[1:(end-orig)]
@@ -791,10 +903,21 @@ loss_calc = function(y, x, orig, end, m, tau, mod_di = 0, ar_tf = 1, p = 1, prin
   return(list(sumloss,lvec))
 }
 
-test = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01, mod_di = 1, ar_tf = 1)
+test = loss_calc(pc_df[,1], pc_df[,-1], orig = 757, end = 1007, 1, 0.01, mod_di = 1, ar_tf = 1)
 # test
 
 ```
+
+```{r}
+# Supress output
+quiet <- function(x) { 
+  sink(tempfile()) 
+  on.exit(sink()) 
+  invisible(force(x)) 
+} 
+```
+
+## MV Caviar - Choosing the optimal number of predictors
 
 ```{r}
 #' Function that selects the optimal number of predictors
@@ -811,14 +934,14 @@ test = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01, mod_di = 1, ar_tf = 
 #' @export
 #'
 #' @examples - opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
-opt_m = function(y, x, orig, end, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1){
+opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1){
   # Initialize a loss vector
   loss_vec = rep(0,high_m-low_m + 1)
   # Initialize an m vector
   m_vec = seq(low_m, high_m, by = 1)
   # Loop through and populate the loss vector
   for (i in 1:length(loss_vec)){
-    loss_vec[i] = loss_calc(y=y,x=x,orig=orig,end=end, m = m_vec[i], tau = tau, mod_di = mod_di, ar_tf = ar_tf, p = p, print = print, model = model)[[1]]
+    loss_vec[i] = quiet(loss_calc(y=y,x=x,orig=orig,end=end, m = m_vec[i], tau = tau, mod_di = mod_di, ar_tf = ar_tf, p = p, print = print, model = model))[[1]]
   }
   # Find the minimizer
   opt_m = which.min(loss_vec)
@@ -874,6 +997,8 @@ mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 3)
 # uvcav_4 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 4, G = 10, col = 1, level = 0.01)
 ```
 
+## MV Caviar - Running the univariate model multiple times
+
 ```{r}
 #' Here is a function that runs the univariate CAViaR model 4 times
 #'
@@ -927,6 +1052,7 @@ gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
 ```
 
 ```{r}
+# Testing the above model
 aceg = gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
 tail(aceg[[1]])
 tail(aceg[[2]])
@@ -949,6 +1075,7 @@ head(plot_mat)
 ncol(plot_mat)
 ```
 
+## MV Caviar - Plotting function
 
 ```{r}
 #' Function to plot the data which we generate in previous functions
@@ -993,68 +1120,7 @@ abc = plt_data(plot_mat)
 # abc
 ```
 
-```{r}
-#' A function to calculate losses based on the plot matrix
-#'
-#' @param data_mat - a matrix of forecasted VaR values, with the true value in the first column
-#' @param tau - VaR level. Must match what the model used
-#'
-#' @return - a list of four items. 
-#' 1 = a vector of the losses of all models. 
-#' 2 = a vector showing the percentage of VaR breaks by model
-#' 3 = the loss matrix
-#' 4 = the break matrix
-#' @export
-#'
-#' @examples
-gen_loss_test = function(data_mat, tau){
-  # Initialize loss and break matrices
-  lmat = bmat = matrix(0, nrow = nrow(data_mat), ncol = ncol(data_mat)-1)
-  # bvec = rep(0, length(true_vec))
-  # Populate the matrices
-  for (i in 1:nrow(lmat)){
-    for (j in 1:(ncol(lmat))){
-      # Calculate an indicator variable
-      bmat[i,j] = ifelse(data_mat[i,1] < data_mat[i,j+1], 1,0)
-      # Use indicator in function below
-      lmat[i,j] = (tau - bmat[i,j])*(data_mat[i,1] - data_mat[i,j+1])
-    }    
-  }
-  # Add up the losses
-  sumloss = colSums(lmat)
-  # Add up the VaR breakage
-  varbreak = colSums(bmat)/nrow(bmat)
-  return(list(sumloss, varbreak, lmat, bmat))
-}
-```
-
-```{r}
-head(plot_mat)
-```
-
-
-```{r}
-l_list = gen_loss_test(plot_mat, 0.01)
-l_list[[1]]
-```
-
-```{r}
-pretty_tables = function(data_mat, loss_list){
-  # Combine into a data frame
-  df = as.data.frame(rbind(loss_list[[1]], loss_list[[2]]))
-  # Add row/column names
-  colnames(df) <- colnames(data_mat[,-1])
-  rownames(df) <- c("Losses", "VaR Breaks (%)")
-  # Convert to a table
-  df %>% kable(caption = "Comparison of VaR Methods", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
-}
-```
-
-```{r}
-pretty_tables(plot_mat, l_list)
-```
-
-
+## MV Caviar - Old Loss Test Function
 
 ```{r}
 #' A function to calculate losses based on the test sample
@@ -1149,6 +1215,72 @@ var_1pc_k5 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
 
 ```
 
+
+
+## MV Caviar - A generalized loss calculation function
+
+```{r}
+#' A function to calculate losses based on the plot matrix
+#'
+#' @param data_mat - a matrix of forecasted VaR values, with the true value in the first column
+#' @param tau - VaR level. Must match what the model used
+#'
+#' @return - a list of four items. 
+#' 1 = a vector of the losses of all models. 
+#' 2 = a vector showing the percentage of VaR breaks by model
+#' 3 = the loss matrix
+#' 4 = the break matrix
+#' @export
+#'
+#' @examples
+gen_loss_test = function(data_mat, tau){
+  # Initialize loss and break matrices
+  lmat = bmat = matrix(0, nrow = nrow(data_mat), ncol = ncol(data_mat)-1)
+  # bvec = rep(0, length(true_vec))
+  # Populate the matrices
+  for (i in 1:nrow(lmat)){
+    for (j in 1:(ncol(lmat))){
+      # Calculate an indicator variable
+      bmat[i,j] = ifelse(data_mat[i,1] < data_mat[i,j+1], 1,0)
+      # Use indicator in function below
+      lmat[i,j] = (tau - bmat[i,j])*(data_mat[i,1] - data_mat[i,j+1])
+    }    
+  }
+  # Add up the losses
+  sumloss = colSums(lmat)
+  # Add up the VaR breakage
+  varbreak = colSums(bmat)/nrow(bmat)
+  return(list(sumloss, varbreak, lmat, bmat))
+}
+```
+
+
+```{r}
+l_list = gen_loss_test(plot_mat, 0.01)
+l_list[[1]]
+```
+
+## MV Caviar - Tables function
+
+```{r}
+pretty_tables = function(data_mat, loss_list){
+  # Combine into a data frame
+  df = as.data.frame(rbind(loss_list[[1]], loss_list[[2]]))
+  # Add row/column names
+  colnames(df) <- colnames(data_mat[,-1])
+  rownames(df) <- c("Losses", "VaR Breaks (%)")
+  # Convert to a table
+  df %>% kable(caption = "Comparison of VaR Methods", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
+}
+```
+
+```{r}
+pretty_tables(plot_mat, l_list)
+```
+
+
+# Big Simulation Function
+
 ```{r}
 #' This is the "master" function where we'll evaluate the importance of the VaR model over several time periods
 #'
@@ -1176,12 +1308,14 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
   # Take the percent change of the data
   pc_df = pc_diff_index(df)
+  # print(pc_df)
   # Extract the legnth of the data frame
   nr = test_end = nrow(pc_df)
-  # Calculate the start of the val period, the end of the val period, and the beginning and end of test period  
+  # Calculate the start of the val period, the end of the val period, and the beginning and end of test period
   test_orig = test_end - ntest
   val_end = test_orig
   val_orig = test_orig - nval
+  # print(c(val_orig, val_end, test_orig, test_end))
   # nrow = 100; ntest = 10; nval = 10
   # test_orig should be 90, val_orig should be 80.
   # test_org = 100 - 10 = 90, implying 91 to 100 should be tested
@@ -1196,7 +1330,7 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau)
   mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1)
   mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2)
-  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3)
+  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3)
   # Calculate the number of predictions
   if (is.null(uv_list) == TRUE){
     # Print a warning
@@ -1206,8 +1340,8 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   }
   # npred = (nrow(pc_df)-(test_orig))
   # Incorporate the rolling predictions function results here
-  plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_cav_list[[1]][(test_orig+1):test_end]*(-1), uv_cav_list[[2]][(test_orig+1):test_end]*(-1), uv_cav_list[[3]][(test_orig+1):test_end]*(-1), uv_cav_list[[4]][(test_orig+1):test_end]*(-1))
-  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+  plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_list[[1]][(test_orig+1):test_end]*(-1), uv_list[[2]][(test_orig+1):test_end]*(-1), uv_list[[3]][(test_orig+1):test_end]*(-1), uv_list[[4]][(test_orig+1):test_end]*(-1))
+  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE)
   # Add descriptive titles onto the plot_mat
   colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
@@ -1221,6 +1355,13 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   print(tables)
   return(list(plot_mat, plot, l_list, tables))
 }
+```
+
+```{r}
+var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 20, low_m = 1, high_m = 5, tau = 0.01)
+# tail(var_1pc_2008_sm)
+
+var_1pc_2008_sm
 ```
 
 To test this function, we're going to combine all the univariate CAViaR parts into one list - STM 2/22/20.
@@ -1244,93 +1385,24 @@ big_test[[4]]
 # diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
 ```
 
+# Test runs
+
+Here we're going to test a 1, 5 and 10% VaR run.
+ 
+```{r}
+var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
+var_1pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
+var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
+var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
+var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
+
+
+
+```
+
 
 # Stock simulation
 
-Real data is messy, but simulation could give us some idea of whether combining all the stocks into a pool could give a lift.
-
-```{r}
-#' Stock simulation for use in CAViaR simulation study
-#'
-#' @param n1 - number of data points in first series
-#' @param n2 - number of data points in second series
-#' @param s1_sd - standard deviation of first series
-#' @param s2_sd - standard deviation of second series 
-#' @param s1_mean - mean of first series 
-#' @param s2_mean - mean of second series 
-#' @param rseed - random seed for reproducibility
-#'
-#' @return - output time series
-#' @export
-#'
-#' @examples hth_series = stock_simul(100, 25, 10, 10)
-stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
-  # Set random seed
-  set.seed(rseed)
-  # Initialize vector and put first value in the series
-  s1 <- rep(1, n1)
-  # Simulate first series
-  for (i in 2:n1){
-    s1[i] <- s1[i-1]*(1+s1_gr) + rnorm(1, mean = 0, sd = s1_sd)
-  }
-  # Initialize vector
-  s2 <- rep(1, n2)
-  # Put first value in
-  s2[1] <- s1[n1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
-  # Simulate second series
-  for (i in 2:n2){
-    s2[i] <- s2[i-1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
-  }
-  # Combine the two series
-  long <- as.matrix(c(s1, s2))
-  # Export the data
-  return(long)
-}
-
-# test <- lth_series[500,1]*(1)
-
-```
-
-
-
-
-
-
-```{r}
-#' Stock data generator for use in CAViaR simulation study
-#' For maximum flexibility, this will only generate one series with one variance and growth rate.
-#' Note that for simplicity, this is modeling the percentage change
-#' 
-#' @param t - number of time data points
-#' @param mu - the mean return in a given day
-#' @param sigma - the standard deviation
-#' @param rseed - random seed for reproducibility. Default is NULL
-#'
-#' @return - output percentage changes of a stock
-#' @export
-#'
-#' @examples dat_gen(1000, 0.001, 0.1)
-dat_gen = function(t, mu, sigma, rseed = NULL){
-  # Have an option for with and without random seed
-  if (is.null(rseed) == TRUE){
-    dat = rnorm(t, mu, sigma)
-  }
-  else {
-    set.seed(rseed)
-    dat = rnorm(t, mu, sigma)
-  }
-  return(dat)
-}
-
-# mean(dat_gen(1000, 0.001, 0.1))
-
-```
-
-```{r}
-# Generalize the above vector to look at many different periods
-
-
-```
 
 # JUNK CODE
 
