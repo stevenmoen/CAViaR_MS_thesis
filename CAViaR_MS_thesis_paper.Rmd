@@ -1037,7 +1037,7 @@ gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
   else {
     uvcav_3 = 0
   }
-  # Model 4 - GARCH
+  # Model 4 - Adaptive
   if (no_run[4] == 0){
     uvcav_4 = rolling_predictions(df[,1], range_data = (1:length(df[,1])), nfcst = nfcst, model = 4, G = 10, col = 1, level = tau)
   }
@@ -1345,7 +1345,7 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   # Add descriptive titles onto the plot_mat
   colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
-  plot = plt_data(plot_mat)
+  # plot = plt_data(plot_mat)
   # Calculate losses
   l_list = gen_loss_test(plot_mat, tau = tau)
   # Put into tables
@@ -1396,7 +1396,79 @@ var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", s
 var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
 var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
 
+# var_0_05_pc_2008
 
+
+
+```
+
+```{r}
+# Diagnose why there are missing values in the indirect GARCH call
+var_1pc_2008[[3]][[3]][,7]
+
+# Missing value at 152. This wasn't here earlier.
+ts.plot(var_1pc_2008[[3]][[3]][,7])
+
+# Let's inspect the underlying data - seems fine. Why would we get different values from before?
+var_1pc_2008[[1]][,1][150:155]
+
+# Let's try running the underlying function
+ind_garch_1pc = gen_uv_test(pc_df, 250, 0.01, no_run = c(1,1,0,1))
+ind_garch_1pc
+# pc_df
+
+
+# Look at the last 250 obs
+tail(ind_garch_1pc[[3]], 250)
+tail(ind_garch_1pc[[3]])
+
+# Do a side-by-side comparison
+plot.ts(var_1pc_2008[[3]][[3]][,7]*(-1))
+tail(ind_garch_1pc[[3]], 5)*(-1)
+var_1pc_2008[[3]][[3]][,7]*(-1)
+
+ind_garch_var = tail(ind_garch_1pc[[3]], 250)*(-1)
+(ind_garch_var) - var_1pc_2008[[3]][[3]][,7]
+head(var_1pc_2008[[3]][[3]][,7])
+head(ind_garch_var)
+
+# Let's see what the previous univariate run produced
+old_run_ig = tail(uvcav_3, 250)
+big_model_ig = var_1pc_2008[[1]][,7]
+tail(ind_garch_var)
+tail(old_run_ig)
+
+
+# So there's 3 different series
+# The first is for the run called in the first "rolling predictions" function - old_run_ig
+# The second is for the one from the gen_uv_test function - ind_garch_var
+# The third is for the one from the cav_simul function - big_model_ig
+
+# comp_mat_3 = cbind(old_run_ig*(-1), ind_garch_var, big_model_ig*(-1))
+# comp_mat_3
+
+# In theory, all three of these should be identical, or at least very very close because of the optimization involved. By and large, 1 and 2 are indeed close. 3 isn't close at all.
+
+# Let's do quick sanity checks for the other runs
+comp_mat_1 = cbind(tail(uvcav_1, 250)*(-1), var_1pc_2008[[1]][,6])
+comp_mat_2 = cbind(tail(uvcav_2, 250)*(-1), var_1pc_2008[[1]][,7])
+comp_mat_3 = cbind(tail(uvcav_3, 250)*(-1), var_1pc_2008[[1]][,8])
+comp_mat_3a = cbind(tail(uvcav_3, 250)*(-1), var_1pc_2008[[1]][,8], tail(ind_garch_1pc[[3]], 250)*(-1))
+comp_mat_4 = cbind(tail(uvcav_4, 250)*(-1), var_1pc_2008[[1]][,9])
+
+# Plot the data
+plot(comp_mat_1)
+plot(comp_mat_2)
+plot(comp_mat_3)
+plot(comp_mat_3a)
+comp_mat_3a
+plot(comp_mat_4)
+comp_mat_2
+comp_mat_3
+# (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) (defaults to 1)
+comp_mat_4
+
+# Are we even calling the right things? I was calling the losses!
 
 ```
 
