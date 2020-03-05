@@ -742,8 +742,25 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   DF = Dindex[1:orig, ]
   # Add in the previous predictors
   # Lag the y-variable
-  ar_y1 = c(NA, y[-length(y)])
-  lag_y1 = ar_y1[1:orig]
+  for (i in 1:p){
+    DF_wl = DF
+    # Create a lagged variable
+    lag_var = c(rep(NA, p), y[-(p*length(y))])
+    # Truncate the length
+    lag_var = lag_var[1:orig]
+    # Append the first lag to the data frame
+    DF_wl = cbind(DF_wl,lag_var)
+  }
+  # Identify the right columns
+  l_ar = ncol(DF_wl)
+  f_ar = l_ar - p + 1
+  # Keep the last columns kept to the side
+  all_lag = DF_wl[,(f_ar:l_ar)]
+  # Cut off the first row to avoid NA's
+  DF_trim = DF_wl[-(1:p),]
+  # Old lag code
+  # ar_y1 = c(NA, y[-length(y)])
+  # lag_y1 = ar_y1[1:orig]
   # lag_y1 = c(NA, y1[-length(y1)])
   # Will come back to the MA part
   # Find the empirical average of the VaR up until the data
@@ -763,33 +780,42 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     # DF_mod = cbind(pc_df, emp_qnt)
   # }
   # Append the first lag to the data frame
-  DF_wl = cbind(DF,lag_y1)
+  # DF_wl = cbind(DF,lag_y1)
   # Cut off the first row to avoid NA's
-  DF_trim = DF_wl[-1,]
+  # DF_trim = DF_wl[-1,]
   # print(DF_trim)
   # print(dim(DF_trim))
   # Apply the linear model - HERE is the key.
   # mm = lm(y1 ~ DF) - old function
   # mm = rq(y1 ~ DF, tau = tau)
-  # Here's the new function with an untransformed AR(1) lag
+  # Here's the new function with an untransformed AR(p) lag
   if (ar_tf == 1){
     mm = rq(y1[-(1:p)] ~ DF_trim, tau = tau)
   }
-  # Here's the new function with an SAV AR(1) lag
-  # Identify the lagged term
-  ar = ncol(DF_trim)
+  # Here's the new function with an SAV AR(p) lag
+  # Identify the first and last AR terms
+  # l_ar = ncol(DF_trim)
+  # f_ar = l_ar - p + 1
   if (ar_tf == 2){
-    mm = rq(y1[-(1:p)] ~ DF_trim[,-ar] + abs(DF_trim[,ar]), tau = tau)
+    mm = rq(y1[-(1:p)] ~ DF_trim[,-(f_ar:l_ar)] + abs(DF_trim[,(f_ar:l_ar)]), tau = tau)
   }
   # Here's the new function with an asymmetric slope for the AR(1) lag
   # Indicator; 0 if percent change is negative, 1 if it's positive
-  indi = ifelse(DF_trim[,ar] < 0, 0, 1)
+  # indi = ifelse(DF_trim[,ar] < 0, 0, 1)
+  # Generalize the above code
+  for (i in 1:p){
+    # Create a matrix of indicators
+    indi_mat = matrix(0, nrow(DF_trim), p)
+    # Populate the indicator
+    indi_mat[,p] = ifelse(DF_trim[,f_ar + p - 1] < 0, 0, 1)
+  }
   # Fitting the regression
   # summary(fit <- lm(pgas~ poil + poilL + indi, data=mess))
   if (ar_tf == 3){
-    mm = rq(y1[-(1:p)] ~ DF_trim[,-ar] + DF_trim[,ar] + indi, tau = tau)
+    mm = rq(y1[-(1:p)] ~ DF_trim[,-(f_ar:l_ar)] + DF_trim[,(f_ar:l_ar)] + indi_mat, tau = tau)
     # Add a different line to account for the indicator variable
-    coef = matrix(mm$coefficients, (m + 3), 1)
+    # intercept + m + 2*nlag to account for the number of indicator variables
+    coef = matrix(mm$coefficients, (1 + m + 2*p), 1)
   }
   if (print == 1){
     print(summary(mm))
@@ -797,7 +823,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   # Puts coefficients in a matrix - added the AR terms
   # coef = matrix(mm$coefficients, (m + 1), 1)
   if (ar_tf != 3){
-    coef = matrix(mm$coefficients, (m + 2), 1)
+    coef = matrix(mm$coefficients, (1 + m + p), 1)
   }
   # Initializes yhat variables and MSE
   yhat = NULL
@@ -806,10 +832,10 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     # Creates a nfcst by (m+2) matrix
     # newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ])
     # Add on the lagged variables
-    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], ar_y1[(orig+1):nT])
+    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT])
     # Incorporate lagged variables
     if (ar_tf == 3){
-      newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], ar_y1[(orig+1):nT], ifelse(ar_y1[(orig+1):nT] < 0,0,1))
+      newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT], ifelse(all_lag[(orig+1):nT] < 0,0,1))
     }
     # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
     # print(dim(newx))
@@ -840,9 +866,9 @@ Let's test to see if the new functions work.
 
 ```{r}
 var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print = 0)
-var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 1, print = 1)
-var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2, print = 1)
-var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3, print = 1)
+var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 1, print = 1, p =2)
+var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2, print = 1, p =2)
+var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3, print = 1, p =2)
 ```
 
 Seems reasonable.
