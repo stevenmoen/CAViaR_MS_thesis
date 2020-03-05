@@ -56,6 +56,15 @@ source('caviar_SM.R')
 # This code below is for use in the CAViaR sections.
 ```
 
+```{r}
+# Here is code that I'll wrap some parts in to avoid superfluous output
+quiet <- function(x) { 
+  sink(tempfile()) 
+  on.exit(sink()) 
+  invisible(force(x)) 
+} 
+```
+
 ## Univariate CAViaR Section
 
 ```{r}
@@ -572,12 +581,14 @@ The code that is used in a diffusion index model is as follows. The key is figur
 #' @param orig - forecast origin
 #' @param m - number of diffusion indexes used
 #' @param tau - VaR level to use; must be between 0 and 1
+#' @param end - specifies an alternate ending value
+#' @param print - print the model summary and the MSE
 #'
 #' @return - returns a list of variables for use in the diffusion index
 #' @export
 #'
 #' @examples
-mod_di = function (y, x, orig, m, tau, end = NULL) 
+mod_di = function (y, x, orig, m, tau, end = NULL, print = 0) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
@@ -628,6 +639,10 @@ mod_di = function (y, x, orig, m, tau, end = NULL)
   # Apply the linear model - HERE is the key.
   # mm = lm(y1 ~ DF) - old function
   mm = rq(y1 ~ DF, tau = tau)
+  # Print the data
+  if (print == 1){
+    print(summary(mm))
+  }
   # Puts coefficients in a matrix
   coef = matrix(mm$coefficients, (m + 1), 1)
   # Initializes yhat variables and MSE
@@ -644,7 +659,9 @@ mod_di = function (y, x, orig, m, tau, end = NULL)
     # Calculates errors
     err = y[(orig + 1):nT] - yhat
     MSE = mean(err^2)
-    cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+    if (print == 1){
+      cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+    }
   }
   SWfore <- list(coef = coef, yhat = yhat, MSE = MSE, loadings = M1, 
       DFindex = Dindex)
@@ -685,7 +702,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   if (is.null(end) != TRUE){
     nT = end
   }
-  print(nT)
+  # print(nT)
   # k is the number of diffusion indices used
   k = dim(x)[2]
   # Sanity checks to ensure that the origin isn't past the number of time points
@@ -801,7 +818,10 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     # Calculates errors
     err = y[(orig + 1):nT] - yhat
     MSE = mean(err^2)
-    cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+    # Modifying this part to only print this if specified
+    if (print == 1){
+      cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+    }
   }
   SWfore <- list(coef = coef, yhat = yhat, MSE = MSE, loadings = M1, 
       DFindex = Dindex)
@@ -819,7 +839,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
 Let's test to see if the new functions work.
 
 ```{r}
-var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
+var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print = 0)
 var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 1, print = 1)
 var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2, print = 1)
 var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3, print = 1)
@@ -880,7 +900,7 @@ var_1pc$yhat
 loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL){
   # Extract y_hat values
   if (mod_di == 0){
-    di = mod_di(y=y,x=x,orig=orig,m=m, tau=tau, end = end)
+    di = mod_di(y=y,x=x,orig=orig,m=m, tau=tau, end = end, print = print)
   }
   else {
     di = mod_di_wl(y=y,x=x,orig=orig,m=m, tau=tau, ar_tf = ar_tf, p = p, print = print, model = model, end = end)
@@ -908,14 +928,7 @@ test = loss_calc(pc_df[,1], pc_df[,-1], orig = 757, end = 1007, 1, 0.01, mod_di 
 
 ```
 
-```{r}
-# Supress output
-quiet <- function(x) { 
-  sink(tempfile()) 
-  on.exit(sink()) 
-  invisible(force(x)) 
-} 
-```
+
 
 ## MV Caviar - Choosing the optimal number of predictors
 
@@ -1087,14 +1100,14 @@ ncol(plot_mat)
 #' @export - a plot of the data by diffusion index number
 #'
 #' @examples = plt_data(plot_mtx[[1]])
-plt_data = function(plot_matrix){
+plt_data = function(plot_matrix, tau){
   # Establish a maximum and minimum value
   max_val = max(plot_matrix[,1:ncol(plot_matrix)])
   min_val = min(plot_matrix[,1:ncol(plot_matrix)])
   # Create an initial plot and add lines
     for (i in 1:ncol(plot_matrix)){
       if (i == 1){
-        plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008")
+        plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
     } else if(i %in% seq(2,8,1)) {
         lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
     } else {
@@ -1115,7 +1128,7 @@ plt_data = function(plot_matrix){
 # plot.ts(index(plot_mat),plot_mat[,1], type = "l")
 # lines(index(plot_mat), plot_mat[,2])
 # as.Date(plot_mat[,1])
-abc = plt_data(plot_mat)
+abc = plt_data(plot_mat, tau = 0.01)
 
 # abc
 ```
@@ -1263,19 +1276,19 @@ l_list[[1]]
 ## MV Caviar - Tables function
 
 ```{r}
-pretty_tables = function(data_mat, loss_list){
+pretty_tables = function(data_mat, loss_list, tau){
   # Combine into a data frame
   df = as.data.frame(rbind(loss_list[[1]], loss_list[[2]]))
   # Add row/column names
   colnames(df) <- colnames(data_mat[,-1])
   rownames(df) <- c("Losses", "VaR Breaks (%)")
   # Convert to a table
-  df %>% kable(caption = "Comparison of VaR Methods", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
+  df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
 }
 ```
 
 ```{r}
-pretty_tables(plot_mat, l_list)
+pretty_tables(plot_mat, l_list, tau = 0.01)
 ```
 
 
@@ -1303,7 +1316,7 @@ pretty_tables(plot_mat, l_list)
 #' @export - a plot and a table
 #'
 #' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, uv_list = NULL, no_run = c(0,0,0,0)){
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print = 0){
   # Select data parameters, pull the data, and percent change the data
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
   # Take the percent change of the data
@@ -1322,15 +1335,15 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   # val_end = 90, val_start should be 80, implying 81 to 90 should be tested
   # Test for the optimal number of parameters
   opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m)
-  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1)
-  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2)
-  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3)
+  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1, print = print)
+  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2, print = print)
+  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3, print = print)
   # gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
   # Use the above forecasts to input into the above
-  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau)
-  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1)
-  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2)
-  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3)
+  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau, print = print)
+  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1, print = print)
+  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2, print = print)
+  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3, print = print)
   # Calculate the number of predictions
   if (is.null(uv_list) == TRUE){
     # Print a warning
@@ -1341,24 +1354,38 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   # npred = (nrow(pc_df)-(test_orig))
   # Incorporate the rolling predictions function results here
   plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_list[[1]][(test_orig+1):test_end]*(-1), uv_list[[2]][(test_orig+1):test_end]*(-1), uv_list[[3]][(test_orig+1):test_end]*(-1), uv_list[[4]][(test_orig+1):test_end]*(-1))
+  # Count the NAs and print a warning
+  print(paste("NOTE: There are ", sum(is.na(plot_mat)), " NA(s) in the dataset", sep = ""))
+  # Linearly interpolate the NAs
+  if (na_interp == TRUE){
+    # Assign the plot matrix to a new value
+    plot_mat_na <- plot_mat
+    # Print a warning
+    print("WARNING: There were missing values in the plot matrix.")
+    # Interpolate the NA's
+    for (i in 1:ncol(plot_mat_na)){
+      # Interpolate the data
+      plot_mat[,i] <- na.approx(plot_mat_na[,i])
+    }
+  }
   # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE)
   # Add descriptive titles onto the plot_mat
   colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
-  # plot = plt_data(plot_mat)
+  plot = plt_data(plot_mat, tau = tau)
   # Calculate losses
   l_list = gen_loss_test(plot_mat, tau = tau)
   # Put into tables
-  tables = pretty_tables(plot_mat, l_list)
+  tables = pretty_tables(plot_mat, l_list, tau = tau)
   # Print the tables and the plot
   print(plot)
   print(tables)
-  return(list(plot_mat, plot, l_list, tables))
+  return(list(plot_mat, plot, l_list, tables, plot_mat_na))
 }
 ```
 
 ```{r}
-var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 20, low_m = 1, high_m = 5, tau = 0.01)
+var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 3, low_m = 1, high_m = 5, tau = 0.01)
 # tail(var_1pc_2008_sm)
 
 var_1pc_2008_sm
@@ -1491,6 +1518,67 @@ comp_mat_4
 
 # Are we even calling the right things? I was calling the losses!
 
+```
+
+Fixing the NAs in the data to send to Wei Biao. Will also serve as a test. This is on 3/3/20.
+
+```{r}
+tm_123 = var_0_05_pc_2008[[1]]
+for (i in 1:ncol(tm_123)){
+  # Interpolate the data
+  tm_123[,i] <- na.approx(tm_123[,i])
+}
+# sum(is.na(tm_123))
+
+
+```
+
+```{r}
+# Write a function to fix the NAs and output a plot and the table
+fix_na <- function(input_df, tau){
+  # Copy the data frame
+  int_df <- input_df
+  # Count the NAs and print a warning
+  # paste("Window Size is",  floor(win_size), sep=" "), 
+  print(paste("NOTE: There are ", sum(is.na(int_df)), " NA(s) in the dataset", sep = ""))
+  # Fix the NAs
+  for (i in 1:ncol(int_df)){
+    # Interpolate the data
+    int_df[,i] <- na.approx(int_df[,i])
+  }
+  # Plot everything
+  plot = plt_data(int_df)
+  # Calculate losses
+  l_list = gen_loss_test(int_df, tau = tau)
+  # Put into tables
+  tables = pretty_tables(int_df, l_list)
+  # Print the tables and the plot
+  print(plot)
+  print(tables)
+  return(list(int_df, plot, l_list, tables))
+}
+
+```
+
+```{r}
+# var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
+# var_1pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
+# var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
+# var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
+# var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
+
+# Call the function multiple times
+fix_0005 = fix_na(var_0_05_pc_2008[[1]], tau = 0.005)
+fix_001 = fix_na(var_1pc_2008[[1]], tau = 0.01)
+fix_005 = fix_na(var_5pc_2008[[1]], tau = 0.05)
+fix_010 = fix_na(var_10pc_2008[[1]], tau = 0.10)
+fix_020 = fix_na(var_20pc_2008[[1]], tau = 0.20)
+```
+
+# Test the quiet portion
+
+```{r}
+var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 2, low_m = 1, high_m = 5, tau = 0.01)
 ```
 
 
