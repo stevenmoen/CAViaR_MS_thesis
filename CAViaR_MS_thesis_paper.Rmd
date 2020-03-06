@@ -741,11 +741,14 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   y1 = y[1:orig]
   DF = Dindex[1:orig, ]
   # Add in the previous predictors
+  # Copy the data frame
+  DF_wl = DF
   # Lag the y-variable
   for (i in 1:p){
-    DF_wl = DF
     # Create a lagged variable
-    lag_var = c(rep(NA, p), y[-(p*length(y))])
+    lag_var = lag(y, i)
+    # lag_var = c(rep(NA, p), y[-((length(y) - p + 1):length(y))])
+    # print(head(lag_var))
     # Truncate the length
     lag_var = lag_var[1:orig]
     # Append the first lag to the data frame
@@ -758,44 +761,12 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   all_lag = DF_wl[,(f_ar:l_ar)]
   # Cut off the first row to avoid NA's
   DF_trim = DF_wl[-(1:p),]
-  # Old lag code
-  # ar_y1 = c(NA, y[-length(y)])
-  # lag_y1 = ar_y1[1:orig]
-  # lag_y1 = c(NA, y1[-length(y1)])
-  # Will come back to the MA part
-  # Find the empirical average of the VaR up until the data
-  # emp_qnt = quantile(y1, tau)
-  # Note on 2/13 - this code has a subdivision based on the number of observations. I am making no such division
-  # However, this could prove important. Below is from the code originally found online
-  # emp_qnt <- if (obs < 300){
-    # quantile(data[1:obs], pval)  
-  # } else {
-    # quantile(data[1:300], pval)
-  # }
-  # Now we must include the incorporation for the different types of VaR. 
-  # We'll use the same labeling as before.
-  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) (defaults to 1)
-  # 1 - SAV
-  # if (model == 1){
-    # DF_mod = cbind(pc_df, emp_qnt)
-  # }
-  # Append the first lag to the data frame
-  # DF_wl = cbind(DF,lag_y1)
-  # Cut off the first row to avoid NA's
-  # DF_trim = DF_wl[-1,]
-  # print(DF_trim)
-  # print(dim(DF_trim))
-  # Apply the linear model - HERE is the key.
-  # mm = lm(y1 ~ DF) - old function
-  # mm = rq(y1 ~ DF, tau = tau)
+  # print(head(DF_trim))
   # Here's the new function with an untransformed AR(p) lag
   if (ar_tf == 1){
     mm = rq(y1[-(1:p)] ~ DF_trim, tau = tau)
   }
   # Here's the new function with an SAV AR(p) lag
-  # Identify the first and last AR terms
-  # l_ar = ncol(DF_trim)
-  # f_ar = l_ar - p + 1
   if (ar_tf == 2){
     mm = rq(y1[-(1:p)] ~ DF_trim[,-(f_ar:l_ar)] + abs(DF_trim[,(f_ar:l_ar)]), tau = tau)
   }
@@ -866,7 +837,7 @@ Let's test to see if the new functions work.
 
 ```{r}
 var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print = 0)
-var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 1, print = 1, p =2)
+var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 3, 0.01, ar_tf = 1, print = 1, p =3)
 var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2, print = 1, p =2)
 var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3, print = 1, p =2)
 ```
@@ -1605,6 +1576,17 @@ fix_020 = fix_na(var_20pc_2008[[1]], tau = 0.20)
 
 ```{r}
 var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 2, low_m = 1, high_m = 5, tau = 0.01)
+```
+
+# Fixing the plot function
+
+```{r}
+# The problem description is that we're seeing odd things on the plot. I want to see if 
+# extracting the date object and formatting it properly might help.
+
+# date(var_20pc_2008[[1]])
+
+# I will wait until I have an internet connection
 ```
 
 
