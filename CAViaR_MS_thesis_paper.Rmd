@@ -761,25 +761,33 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   all_lag = DF_wl[,(f_ar:l_ar)]
   # Cut off the first row to avoid NA's
   DF_trim = DF_wl[-(1:p),]
+  # Rename the columns
   # print(head(DF_trim))
+  # print(head(y1))
   # Here's the new function with an untransformed AR(p) lag
   if (ar_tf == 1){
     mm = rq(y1[-(1:p)] ~ DF_trim, tau = tau)
+    # print(mm)
   }
   # Here's the new function with an SAV AR(p) lag
   if (ar_tf == 2){
     mm = rq(y1[-(1:p)] ~ DF_trim[,-(f_ar:l_ar)] + abs(DF_trim[,(f_ar:l_ar)]), tau = tau)
+    # print(mm)
   }
   # Here's the new function with an asymmetric slope for the AR(1) lag
   # Indicator; 0 if percent change is negative, 1 if it's positive
   # indi = ifelse(DF_trim[,ar] < 0, 0, 1)
-  # Generalize the above code
-  for (i in 1:p){
+  if (ar_tf == 3){
     # Create a matrix of indicators
     indi_mat = matrix(0, nrow(DF_trim), p)
-    # Populate the indicator
-    indi_mat[,p] = ifelse(DF_trim[,f_ar + p - 1] < 0, 0, 1)
+    # Generalize the above code
+    for (i in 1:p){
+      # print(f_ar + i - 1)
+      # Populate the indicator
+      indi_mat[,i] = ifelse(DF_trim[,f_ar + i - 1] < 0, 0, 1)
+    }
   }
+  # print(head(indi_mat))
   # Fitting the regression
   # summary(fit <- lm(pgas~ poil + poilL + indi, data=mess))
   if (ar_tf == 3){
@@ -787,6 +795,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     # Add a different line to account for the indicator variable
     # intercept + m + 2*nlag to account for the number of indicator variables
     coef = matrix(mm$coefficients, (1 + m + 2*p), 1)
+    # print(mm)
   }
   if (print == 1){
     print(summary(mm))
@@ -827,7 +836,10 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
 ```
 
 ```{r}
-# mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = 1007, end = 1108, 3, 0.01, ar_tf = 3)
+# mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL) 
+mv_fcst_art3 = mod_di_wl(y = pc_df[,1], x = pc_df[,-1], orig = 1007, m = 5,  tau = 0.01, ar_tf = 1, p = 1)
+# print(head(pg))
+names(pc_df)[-1]
 ```
 
 
@@ -837,7 +849,7 @@ Let's test to see if the new functions work.
 
 ```{r}
 var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print = 0)
-var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 3, 0.01, ar_tf = 1, print = 1, p =3)
+var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 3, 0.01, ar_tf = 1, print = 1, p =1)
 var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2, print = 1, p =2)
 var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3, print = 1, p =2)
 ```
