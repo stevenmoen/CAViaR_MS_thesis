@@ -762,12 +762,17 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   # Cut off the first row to avoid NA's
   DF_trim = DF_wl[-(1:p),]
   # Rename the columns
-  # print(head(DF_trim))
-  # print(head(y1))
   # Here's the new function with an untransformed AR(p) lag
   if (ar_tf == 1){
     mm = rq(y1[-(1:p)] ~ DF_trim, tau = tau)
-    # print(mm)
+    print(mm)
+    # Check on 3/30/20 - what happens if we don't exclude the rows but try na.omit
+    print(dim(y1))
+    print(dim(DF_wl))
+    print(head(y1))
+    print(head(DF_wl))
+    mm_na = rq(y1 ~ DF_wl, tau = tau, na.action = na.exclude)
+    # print(mm_na)
   }
   # Here's the new function with an SAV AR(p) lag
   if (ar_tf == 2){
@@ -808,6 +813,11 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   # Initializes yhat variables and MSE
   yhat = NULL
   MSE = NULL
+  # Print the dimensions of the data frame and nT
+  print(dim(DF_trim))
+  print(nT)
+  print(dim(Dindex))
+  print(dim(all_lag))
   if (orig < nT) {
     # Creates a nfcst by (m+2) matrix
     # newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ])
