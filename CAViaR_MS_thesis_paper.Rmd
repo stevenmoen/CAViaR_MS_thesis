@@ -46,6 +46,7 @@ library(kableExtra)
 library(formattable)
 library(quantreg)
 library(MTS)
+library(plot3D)
 
 # Set up working directory
 setwd("~/Documents/GitHub/CaviaR")
@@ -702,7 +703,6 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   if (is.null(end) != TRUE){
     nT = end
   }
-  # print(nT)
   # k is the number of diffusion indices used
   k = dim(x)[2]
   # Sanity checks to ensure that the origin isn't past the number of time points
@@ -740,17 +740,12 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   # Cut down both the response and predictors to be a reasonable size
   y1 = y[1:orig]
   DF = Dindex[1:orig, ]
-  # Add in the previous predictors
   # Copy the data frame
-  DF_wl = DF
+  DF_wl = Dindex
   # Lag the y-variable
   for (i in 1:p){
     # Create a lagged variable
     lag_var = lag(y, i)
-    # lag_var = c(rep(NA, p), y[-((length(y) - p + 1):length(y))])
-    # print(head(lag_var))
-    # Truncate the length
-    lag_var = lag_var[1:orig]
     # Append the first lag to the data frame
     DF_wl = cbind(DF_wl,lag_var)
   }
@@ -760,47 +755,100 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   # Keep the last columns kept to the side
   all_lag = DF_wl[,(f_ar:l_ar)]
   # Cut off the first row to avoid NA's
-  DF_trim = DF_wl[-(1:p),]
+  DF_trim = DF_wl[1:orig,]
   # Rename the columns
   # Here's the new function with an untransformed AR(p) lag
   if (ar_tf == 1){
-    mm = rq(y1[-(1:p)] ~ DF_trim, tau = tau)
-    print(mm)
-    # Check on 3/30/20 - what happens if we don't exclude the rows but try na.omit
-    print(dim(y1))
-    print(dim(DF_wl))
-    print(head(y1))
-    print(head(DF_wl))
-    mm_na = rq(y1 ~ DF_wl, tau = tau, na.action = na.exclude)
-    # print(mm_na)
+    # Incorporate everything in to an input data frame
+    df_in = cbind(y1[-(1:p)], DF_trim[-(1:p),])
+    # Rename the columns
+    # Initialize a character vector
+    nvec = c(rep(0, 1+m+p))
+    # Populate the vector - first value is the response
+    nvec[1] <- names(y)
+    # print(nvec)
+    # Next are the diffusion indices
+    for (i in 1:m){
+      nvec[i+1] = paste0("Diff_Index_", i)
+      # print(nvec)
+    }
+    # Next are the lagged variables
+    for (i in 1:p){
+      nvec[i+1+m] = paste0("Lag_", i)
+    }
+    # Assign the names
+    names(df_in) <- nvec
+    # Run the model
+    mm = rq(df_in[,1] ~ df_in[,-1], tau = tau)
   }
   # Here's the new function with an SAV AR(p) lag
   if (ar_tf == 2){
-    mm = rq(y1[-(1:p)] ~ DF_trim[,-(f_ar:l_ar)] + abs(DF_trim[,(f_ar:l_ar)]), tau = tau)
-    # print(mm)
+    # Incorporate everything in to an input data frame
+    df_in = cbind(y1[-(1:p)], DF_trim[-(1:p),-(f_ar:l_ar)], abs(DF_trim[-(1:p),(f_ar:l_ar)]))
+    # Rename the columns
+    # Initialize a character vector
+    nvec = c(rep(0, 1+m+p))
+    # Populate the vector - first value is the response
+    nvec[1] <- names(y)
+    # print(nvec)
+    # Next are the diffusion indices
+    for (i in 1:m){
+      nvec[i+1] = paste0("Diff_Index_", i)
+      # print(nvec)
+    }
+    # Next are the lagged variables
+    for (i in 1:p){
+      nvec[i+1+m] = paste0("Lag_", i)
+    }
+    # Assign the names. Note that this is a matrix
+    names(df_in) <- nvec
+    # Run the model
+    mm = rq(df_in[,1] ~ df_in[,-1], tau = tau)
   }
   # Here's the new function with an asymmetric slope for the AR(1) lag
   # Indicator; 0 if percent change is negative, 1 if it's positive
   # indi = ifelse(DF_trim[,ar] < 0, 0, 1)
   if (ar_tf == 3){
     # Create a matrix of indicators
-    indi_mat = matrix(0, nrow(DF_trim), p)
+    indi_mat = matrix(0, nrow(DF_wl), p)
     # Generalize the above code
     for (i in 1:p){
       # print(f_ar + i - 1)
       # Populate the indicator
-      indi_mat[,i] = ifelse(DF_trim[,f_ar + i - 1] < 0, 0, 1)
+      indi_mat[,i] = ifelse(DF_wl[,f_ar + i - 1] < 0, 0, 1)
     }
   }
-  # print(head(indi_mat))
   # Fitting the regression
-  # summary(fit <- lm(pgas~ poil + poilL + indi, data=mess))
   if (ar_tf == 3){
-    mm = rq(y1[-(1:p)] ~ DF_trim[,-(f_ar:l_ar)] + DF_trim[,(f_ar:l_ar)] + indi_mat, tau = tau)
+    # Incorporate everything in to an input data frame
+    df_in = cbind(y1[-(1:p)], DF_trim[-(1:p),-(f_ar:l_ar)], DF_trim[-(1:p),(f_ar:l_ar)], indi_mat[((p+1):orig),])
+    # Rename the columns
+    # Initialize a character vector
+    nvec = c(rep(0, 1+m+2*p))
+    # Populate the vector - first value is the response
+    nvec[1] <- names(y)
+    # print(nvec)
+    # Next are the diffusion indices
+    for (i in 1:m){
+      nvec[i+1] = paste0("Diff_Index_", i)
+      # print(nvec)
+    }
+    # Next are the lagged variables
+    for (i in 1:p){
+      nvec[i+1+m] = paste0("Lag_", i)
+    }
+    # Last are the positive indicator variables
+    for (i in 1:p){
+      nvec[i+1+m+p] = paste0("Pos_Val_for_Lag_", i)
+    }
+    # Assign the names. Note that this is a matrix
+    names(df_in) <- nvec
+    # Run the model
+    mm = rq(df_in[,1] ~ df_in[,-1], tau = tau)
+    # mm = rq(y1[-(1:p)] ~ DF_trim[-(1:p),-(f_ar:l_ar)] + DF_trim[-(1:p),(f_ar:l_ar)] + indi_mat[((p+1):orig),], tau = tau)
     # Add a different line to account for the indicator variable
     # intercept + m + 2*nlag to account for the number of indicator variables
     coef = matrix(mm$coefficients, (1 + m + 2*p), 1)
-    # print(mm)
   }
   if (print == 1){
     print(summary(mm))
@@ -812,56 +860,39 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
   }
   # Initializes yhat variables and MSE
   yhat = NULL
-  MSE = NULL
-  # Print the dimensions of the data frame and nT
-  print(dim(DF_trim))
-  print(nT)
-  print(dim(Dindex))
-  print(dim(all_lag))
+  loss = NULL
   if (orig < nT) {
     # Creates a nfcst by (m+2) matrix
-    # newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ])
     # Add on the lagged variables
-    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT])
+    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT,])
     # Incorporate lagged variables
     if (ar_tf == 3){
-      newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT], ifelse(all_lag[(orig+1):nT] < 0,0,1))
+      newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT,], indi_mat[(orig+1):nT,])
     }
     # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
-    # print(dim(newx))
-    # print(dim(coef))
     yhat = newx %*% coef
     # Calculates errors
-    err = y[(orig + 1):nT] - yhat
-    MSE = mean(err^2)
+    loss = abs(sum(ifelse(y[(orig + 1):nT] > yhat, tau, (-1)*(1-tau))))
     # Modifying this part to only print this if specified
     if (print == 1){
-      cat("MSE of out-of-sample forecasts: ", MSE, "\n")
+      cat("Losses of out-of-sample forecasts: ", loss, "\n")
     }
   }
-  SWfore <- list(coef = coef, yhat = yhat, MSE = MSE, loadings = M1, 
-      DFindex = Dindex)
+  SWfore <- list(coef = coef, yhat = yhat, loss = loss, loadings = M1, 
+      DFindex = Dindex, name_vector = nvec)
 }
 
 ```
-
-```{r}
-# mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL) 
-mv_fcst_art3 = mod_di_wl(y = pc_df[,1], x = pc_df[,-1], orig = 1007, m = 5,  tau = 0.01, ar_tf = 1, p = 1)
-# print(head(pg))
-names(pc_df)[-1]
-```
-
-
 
 
 Let's test to see if the new functions work.
 
 ```{r}
 var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print = 0)
-var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 3, 0.01, ar_tf = 1, print = 1, p =1)
-var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 2, print = 1, p =2)
-var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, 2, 0.01, ar_tf = 3, print = 1, p =2)
+var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 3, 0.01, ar_tf = 1, print = 1, p =1)
+var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 2, print = 1, p =4)
+var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 3, print = 1, p =2)
+# var_1pc_ar3$name_vector
 ```
 
 Seems reasonable.
@@ -942,8 +973,8 @@ loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print = 0
   return(list(sumloss,lvec))
 }
 
-test = loss_calc(pc_df[,1], pc_df[,-1], orig = 757, end = 1007, 1, 0.01, mod_di = 1, ar_tf = 1)
-# test
+test = loss_calc(pc_df[,1], pc_df[,-1], orig = 757, end = 1007, m = 1, p= 1, 0.01, mod_di = 1, ar_tf = 1)
+test
 
 ```
 
@@ -980,7 +1011,62 @@ opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_
   # Return the loss_vector and the minimzer
   return(list(opt_m, loss_vec))
 }
+```
 
+```{r}
+#' Function that selects the optimal number of lags
+#'
+#' @param y - response vector
+#' @param x - predictor variables
+#' @param orig - forecast origin
+#' @param end - ending of validation set
+#' @param tau - VaR in question
+#' @param low_m - low value of m to consider
+#' @param high_m - high value of m to consider
+#'
+#' @return - returns the optimal value of m
+#' @export
+#'
+#' @examples - opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
+opt_p = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, low_p = 1, high_p, mod_di = 0, ar_tf = 1, print = 0, model = 1){
+  # Initialize a loss matrix
+  loss_mat = matrix(0, high_p-low_p + 1,high_m-low_m + 1)
+  # Initialize a p vector
+  p_vec = seq(low_p, high_p, by = 1)
+  print(nrow(loss_mat))
+  # Loop through and populate the loss vector
+  for (i in 1:nrow(loss_mat)){
+    loss_mat[i,] = opt_m(y = y, x = x, orig = orig, end = end, tau = tau, low_m = low_m, high_m  = high_m, p = i, mod_di = mod_di, ar_tf = ar_tf, print = print, model = model)[[2]]
+  }
+  # Find the minimizer
+  # print(which(x == min(x), arr.ind = TRUE))
+  opt_p = which(loss_mat == min(loss_mat), arr.ind = TRUE)[1,1]
+  opt_m = which(loss_mat == min(loss_mat), arr.ind = TRUE)[1,2]
+  # Return the loss_vector and the minimzer
+  return(list(opt_p, opt_m, loss_mat))
+}
+```
+
+```{r}
+blah = opt_p(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
+# ?persp3D
+# persp3D(z = (blah[[3]]*(-1)), theta = 50,
+        ticktype="detailed", xlab="Number of Lags", ylab="Number of Diffusion Indices", zlab="",axes=FALSE)
+# axes3d(c('x--','z'))
+# Use custom labels
+# axis3d(edge= 'x+-', at =seq(1,nrow(blah),by=1)) 
+                    # labels = rownames(fd)[seq(500,2000,by=500)] )
+# persp3d(x, y, z, theta=50, phi=25, expand=0.75, col=color[zcol],
+        # ticktype="detailed", xlab="", ylab="time", zlab="",axes=TRUE)
+```
+
+```{r}
+# Find the optimal values of p and m for each model
+
+```
+
+
+```{r}
 opt_pred = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5)
 # opt_pred[[1]]
 
@@ -1782,4 +1868,152 @@ lines(as.ts(uvcav_4[1008:1257])*(-1), col = "purple", lty = 2)
 # lines(m4_mth[2:26]*(-1), col = "purple", lty = 2)
 
 # length(uvcav_1)
+```
+
+Before renaming the data. Delete if code above works after 4/6/2020 (incorporated 3/31/2020)
+
+
+```{r}
+#' Below is the modified diffusion index code to include lagged variables.
+#'
+#' @param y - response variable
+#' @param x - predictor variables
+#' @param orig - forecast origin
+#' @param m - number of diffusion indexes used
+#' @param tau - VaR level to use; must be between 0 and 1
+#' @param ar_tf - AR transformation type. (1 - no transformation,
+#' 2 - absolute value, 3 - asymmetric slope)
+#' @param p - number of AR lags to include. Default is one.
+#' @param print - option to print the model summary to make sure everytning is ok. 0 is default.
+#' @param model - model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+#'
+#' @return - returns a list of variables for use in the diffusion index
+#' @export
+#'
+#' @examples
+mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL) 
+{
+  # Converts the response variables into a matrix
+  if (!is.matrix(x)) 
+      x = as.matrix(x)
+  # nT is number of t time-steps
+  nT = dim(x)[1]
+  # Add a line to establish the number of data points used in the test.
+  if (is.null(end) != TRUE){
+    nT = end
+  }
+  # k is the number of diffusion indices used
+  k = dim(x)[2]
+  # Sanity checks to ensure that the origin isn't past the number of time points
+  if (orig > nT) 
+      orig = nT
+  # Makes sure that there aren't more predictors than there variables in the dataset
+  if (m > k) 
+      m = k
+  # Makes sure there are at least some variables
+  if (m < 1) 
+      m = 1
+  # Subdivides the dataframe
+  x1 = x[1:orig, ]
+  # Calculates means of each row
+  me = apply(x1, 2, mean)
+  # Calculates standard deviations of each column
+  se = sqrt(apply(x1, 2, var))
+  # Creates a matrix x1, which normalizes all the columns. 
+  # This may be an issue since it assumes that the distribution is sufficiently described by the first two moments
+  x1 = x
+  for (i in 1:k) {
+      x1[, i] = (x1[, i] - me[i])/se[i]
+  }
+  V1 = cov(x1[1:orig, ])
+  # Performs an eigen decomposition
+  m1 = eigen(V1)
+  # Selects eigenvalues
+  sdev = m1$values
+  # Selects eigenvectors
+  M = m1$vectors
+  # Makes a smaller matrix
+  M1 = M[, 1:m]
+  # This is the diffusion index model - [orig x p]*[p x m] = [orig x m]
+  Dindex = x1 %*% M1
+  # Cut down both the response and predictors to be a reasonable size
+  y1 = y[1:orig]
+  DF = Dindex[1:orig, ]
+  # Copy the data frame
+  DF_wl = Dindex
+  # Lag the y-variable
+  for (i in 1:p){
+    # Create a lagged variable
+    lag_var = lag(y, i)
+    # Append the first lag to the data frame
+    DF_wl = cbind(DF_wl,lag_var)
+  }
+  # Identify the right columns
+  l_ar = ncol(DF_wl)
+  f_ar = l_ar - p + 1
+  # Keep the last columns kept to the side
+  all_lag = DF_wl[,(f_ar:l_ar)]
+  # Cut off the first row to avoid NA's
+  DF_trim = DF_wl[1:orig,]
+  # Rename the columns
+  # Here's the new function with an untransformed AR(p) lag
+  if (ar_tf == 1){
+    mm = rq(y1[-(1:p)] ~ DF_trim[-(1:p),], tau = tau)
+  }
+  # Here's the new function with an SAV AR(p) lag
+  if (ar_tf == 2){
+    mm = rq(y1[-(1:p)] ~ DF_trim[-(1:p),-(f_ar:l_ar)] + abs(DF_trim[-(1:p),(f_ar:l_ar)]), tau = tau)
+  }
+  # Here's the new function with an asymmetric slope for the AR(1) lag
+  # Indicator; 0 if percent change is negative, 1 if it's positive
+  # indi = ifelse(DF_trim[,ar] < 0, 0, 1)
+  if (ar_tf == 3){
+    # Create a matrix of indicators
+    indi_mat = matrix(0, nrow(DF_wl), p)
+    # Generalize the above code
+    for (i in 1:p){
+      # print(f_ar + i - 1)
+      # Populate the indicator
+      indi_mat[,i] = ifelse(DF_wl[,f_ar + i - 1] < 0, 0, 1)
+    }
+  }
+  # Fitting the regression
+  if (ar_tf == 3){
+    mm = rq(y1[-(1:p)] ~ DF_trim[-(1:p),-(f_ar:l_ar)] + DF_trim[-(1:p),(f_ar:l_ar)] + indi_mat[((p+1):orig),], tau = tau)
+    # Add a different line to account for the indicator variable
+    # intercept + m + 2*nlag to account for the number of indicator variables
+    coef = matrix(mm$coefficients, (1 + m + 2*p), 1)
+  }
+  if (print == 1){
+    print(summary(mm))
+  }
+  # Puts coefficients in a matrix - added the AR terms
+  # coef = matrix(mm$coefficients, (m + 1), 1)
+  if (ar_tf != 3){
+    coef = matrix(mm$coefficients, (1 + m + p), 1)
+  }
+  # Initializes yhat variables and MSE
+  yhat = NULL
+  loss = NULL
+  if (orig < nT) {
+    # Creates a nfcst by (m+2) matrix
+    # Add on the lagged variables
+    newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT,])
+    # Incorporate lagged variables
+    if (ar_tf == 3){
+      newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, ], all_lag[(orig+1):nT,], indi_mat[(orig+1):nT,])
+    }
+    # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
+    yhat = newx %*% coef
+    # Calculates errors
+    loss = abs(sum(ifelse(y[(orig + 1):nT] > yhat, tau, (-1)*(1-tau))))
+    # Modifying this part to only print this if specified
+    if (print == 1){
+      cat("Losses of out-of-sample forecasts: ", loss, "\n")
+    }
+  }
+  SWfore <- list(coef = coef, yhat = yhat, loss = loss, loadings = M1, 
+      DFindex = Dindex)
+}
+
 ```
