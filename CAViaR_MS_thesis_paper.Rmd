@@ -583,13 +583,13 @@ The code that is used in a diffusion index model is as follows. The key is figur
 #' @param m - number of diffusion indexes used
 #' @param tau - VaR level to use; must be between 0 and 1
 #' @param end - specifies an alternate ending value
-#' @param print - print the model summary and the MSE
+#' @param print_mdl - print the model summary and the MSE
 #'
 #' @return - returns a list of variables for use in the diffusion index
 #' @export
 #'
 #' @examples
-mod_di = function (y, x, orig, m, tau, end = NULL, print = 0) 
+mod_di = function (y, x, orig, m, tau, end = NULL, print_mdl = 0) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
@@ -641,7 +641,7 @@ mod_di = function (y, x, orig, m, tau, end = NULL, print = 0)
   # mm = lm(y1 ~ DF) - old function
   mm = rq(y1 ~ DF, tau = tau)
   # Print the data
-  if (print == 1){
+  if (print_mdl == 1){
     print(summary(mm))
   }
   # Puts coefficients in a matrix
@@ -654,13 +654,11 @@ mod_di = function (y, x, orig, m, tau, end = NULL, print = 0)
     newx = cbind(rep(1, (nT - orig)), Dindex[(orig + 1):nT, 
         ])
     # [nfcstx(m+1)]*[(m+1)x1] = [nfcstx1]
-    # print(dim(newx))
-    # print(dim(coef))
     yhat = newx %*% coef
     # Calculates errors
     err = y[(orig + 1):nT] - yhat
     MSE = mean(err^2)
-    if (print == 1){
+    if (print_mdl == 1){
       cat("MSE of out-of-sample forecasts: ", MSE, "\n")
     }
   }
@@ -685,14 +683,14 @@ Let's add a code which incorporates the previous values of the return.
 #' @param ar_tf - AR transformation type. (1 - no transformation,
 #' 2 - absolute value, 3 - asymmetric slope)
 #' @param p - number of AR lags to include. Default is one.
-#' @param print - option to print the model summary to make sure everytning is ok. 0 is default.
+#' @param print_mdl - option to print the model summary to make sure everytning is ok. 0 is default.
 #' @param model - model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
 #'
 #' @return - returns a list of variables for use in the diffusion index
 #' @export
 #'
 #' @examples
-mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL) 
+mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print_mdl = 0, model = 1, end = NULL) 
 {
   # Converts the response variables into a matrix
   if (!is.matrix(x)) 
@@ -766,11 +764,9 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     nvec = c(rep(0, 1+m+p))
     # Populate the vector - first value is the response
     nvec[1] <- names(y)
-    # print(nvec)
     # Next are the diffusion indices
     for (i in 1:m){
       nvec[i+1] = paste0("Diff_Index_", i)
-      # print(nvec)
     }
     # Next are the lagged variables
     for (i in 1:p){
@@ -790,11 +786,9 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     nvec = c(rep(0, 1+m+p))
     # Populate the vector - first value is the response
     nvec[1] <- names(y)
-    # print(nvec)
     # Next are the diffusion indices
     for (i in 1:m){
       nvec[i+1] = paste0("Diff_Index_", i)
-      # print(nvec)
     }
     # Next are the lagged variables
     for (i in 1:p){
@@ -813,7 +807,6 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     indi_mat = matrix(0, nrow(DF_wl), p)
     # Generalize the above code
     for (i in 1:p){
-      # print(f_ar + i - 1)
       # Populate the indicator
       indi_mat[,i] = ifelse(DF_wl[,f_ar + i - 1] < 0, 0, 1)
     }
@@ -827,11 +820,9 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     nvec = c(rep(0, 1+m+2*p))
     # Populate the vector - first value is the response
     nvec[1] <- names(y)
-    # print(nvec)
     # Next are the diffusion indices
     for (i in 1:m){
       nvec[i+1] = paste0("Diff_Index_", i)
-      # print(nvec)
     }
     # Next are the lagged variables
     for (i in 1:p){
@@ -850,7 +841,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     # intercept + m + 2*nlag to account for the number of indicator variables
     coef = matrix(mm$coefficients, (1 + m + 2*p), 1)
   }
-  if (print == 1){
+  if (print_mdl == 1){
     print(summary(mm))
   }
   # Puts coefficients in a matrix - added the AR terms
@@ -874,7 +865,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
     # Calculates errors
     loss = abs(sum(ifelse(y[(orig + 1):nT] > yhat, tau, (-1)*(1-tau))))
     # Modifying this part to only print this if specified
-    if (print == 1){
+    if (print_mdl == 1){
       cat("Losses of out-of-sample forecasts: ", loss, "\n")
     }
   }
@@ -888,11 +879,13 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
 Let's test to see if the new functions work.
 
 ```{r}
-var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print = 0)
-var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 3, 0.01, ar_tf = 1, print = 1, p =1)
-var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 2, print = 1, p =4)
-var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 3, print = 1, p =2)
+var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print_mdl = 0)
+var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 3, 0.01, ar_tf = 1, print_mdl = 1, p =1)
+var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 2, print_mdl = 1, p =4)
+var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 3, print_mdl = 1, p =2)
 # var_1pc_ar3$name_vector
+
+?rq
 ```
 
 Seems reasonable.
@@ -947,15 +940,15 @@ var_1pc$yhat
 #' @export
 #'
 #' @examples - loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)
-loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1, end = NULL){
+loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print_mdl = 0, model = 1, end = NULL){
   # Extract y_hat values
   if (mod_di == 0){
-    di = mod_di(y=y,x=x,orig=orig,m=m, tau=tau, end = end, print = print)
+    di = mod_di(y=y,x=x,orig=orig,m=m, tau=tau, end = end, print_mdl = print_mdl)
   }
   else {
-    di = mod_di_wl(y=y,x=x,orig=orig,m=m, tau=tau, ar_tf = ar_tf, p = p, print = print, model = model, end = end)
+    di = mod_di_wl(y=y,x=x,orig=orig,m=m, tau=tau, ar_tf = ar_tf, p = p, print_mdl = print_mdl, model = model, end = end)
   }
-  # mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1)
+  # mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print_mdl = 0, model = 1)
   yhat = di$yhat[1:(end-orig)]
   # Calculate the loss
   # Initialize loss vector
@@ -997,14 +990,14 @@ test
 #' @export
 #'
 #' @examples - opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
-opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print = 0, model = 1){
+opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print_mdl = 0, model = 1){
   # Initialize a loss vector
   loss_vec = rep(0,high_m-low_m + 1)
   # Initialize an m vector
   m_vec = seq(low_m, high_m, by = 1)
   # Loop through and populate the loss vector
   for (i in 1:length(loss_vec)){
-    loss_vec[i] = quiet(loss_calc(y=y,x=x,orig=orig,end=end, m = m_vec[i], tau = tau, mod_di = mod_di, ar_tf = ar_tf, p = p, print = print, model = model))[[1]]
+    loss_vec[i] = quiet(loss_calc(y=y,x=x,orig=orig,end=end, m = m_vec[i], tau = tau, mod_di = mod_di, ar_tf = ar_tf, p = p, print_mdl = print_mdl, model = model))[[1]]
   }
   # Find the minimizer
   opt_m = which.min(loss_vec)
@@ -1027,31 +1020,36 @@ opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_
 #' @return - returns the optimal value of m
 #' @export
 #'
-#' @examples - opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
-opt_p = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, low_p = 1, high_p, mod_di = 0, ar_tf = 1, print = 0, model = 1){
+#' @examples - opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
+opt_mp = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, low_p = 1, high_p, mod_di = 0, ar_tf = 1, print_mdl = 0, model = 1, print_mp = 0){
   # Initialize a loss matrix
   loss_mat = matrix(0, high_p-low_p + 1,high_m-low_m + 1)
   # Initialize a p vector
   p_vec = seq(low_p, high_p, by = 1)
-  print(nrow(loss_mat))
   # Loop through and populate the loss vector
   for (i in 1:nrow(loss_mat)){
-    loss_mat[i,] = opt_m(y = y, x = x, orig = orig, end = end, tau = tau, low_m = low_m, high_m  = high_m, p = i, mod_di = mod_di, ar_tf = ar_tf, print = print, model = model)[[2]]
+    loss_mat[i,] = opt_m(y = y, x = x, orig = orig, end = end, tau = tau, low_m = low_m, high_m  = high_m, p = i, mod_di = mod_di, ar_tf = ar_tf, print_mdl = print_mdl, model = model)[[2]]
   }
   # Find the minimizer
-  # print(which(x == min(x), arr.ind = TRUE))
   opt_p = which(loss_mat == min(loss_mat), arr.ind = TRUE)[1,1]
   opt_m = which(loss_mat == min(loss_mat), arr.ind = TRUE)[1,2]
+  # Print the optimal p and optimal m
+  df = as.data.frame(cbind(opt_m, opt_p))
+  names(df) <- c("Optimal m", "Optimal p")
+  # Print the df if the option is turned on
+  if (print_mp == 1){
+    print(df)
+  }
   # Return the loss_vector and the minimzer
-  return(list(opt_p, opt_m, loss_mat))
+  return(list(opt_m, opt_p, loss_mat, df))
 }
 ```
 
 ```{r}
-blah = opt_p(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
+opt_mp_out = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
 # ?persp3D
 # persp3D(z = (blah[[3]]*(-1)), theta = 50,
-        ticktype="detailed", xlab="Number of Lags", ylab="Number of Diffusion Indices", zlab="",axes=FALSE)
+        # ticktype="detailed", xlab="Number of Lags", ylab="Number of Diffusion Indices", zlab="",axes=FALSE)
 # axes3d(c('x--','z'))
 # Use custom labels
 # axis3d(edge= 'x+-', at =seq(1,nrow(blah),by=1)) 
@@ -1061,59 +1059,26 @@ blah = opt_p(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, 
 ```
 
 ```{r}
+
+# The plot above looks awful
+opt_pm[[2]]
+m <- 1:5
+p <- 1:10
+# persp(p,m, z = -opt_pm[[3]], theta = 10)
+
+# Still looks horrendous. We'll come back later, but this probably isn't worth the time fixing.
+```
+
+```{r}
 # Find the optimal values of p and m for each model
-
-```
-
-
-```{r}
-opt_pred = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5)
-# opt_pred[[1]]
-
 opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5)
-opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
-opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
-opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
+opt_pm_m1 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 1, mod_di = 1)
+opt_pm_m2 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
+opt_pm_m3 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 3, mod_di = 1)
 
-opt_pred_nl
-opt_pred_art1
-opt_pred_art2
-opt_pred_art3
-
-# test1 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)[[1]]
-# test2 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 2, 0.01)[[1]]
-# test3 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 3, 0.01)[[1]]
-# test4 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 4, 0.01)[[1]]
-# test5 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 5, 0.01)[[1]]
-
-# print(c(test1, test2, test3, test4, test5))
-
+# opt_pm_m3[[3]]
 ```
 
-All of the optimal parameters to consider are 3.
-
-```{r}
-# Run the model
-mv_fcst = mod_di(pc_df[,1], pc_df[,-1], 1007, 3, 0.01)
-mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 1)
-mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 2)
-mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 3)
-
-# Run the model for the other three scenarios
-
-# mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1)
-
-```
-
-```{r}
-# Warning!! These can take a while to run (~1 hour). Proceed with caution.
-
-# Run the univariate CAViaR models - these take a while. Be careful.
-# uvcav_1 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 1, G = 10, col = 1, level = 0.01)
-# uvcav_2 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 2, G = 10, col = 1, level = 0.01)
-# uvcav_3 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 3, G = 10, col = 1, level = 0.01)
-# uvcav_4 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 4, G = 10, col = 1, level = 0.01)
-```
 
 ## MV Caviar - Running the univariate model multiple times
 
@@ -1169,30 +1134,6 @@ gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
 # blah = list()
 ```
 
-```{r}
-# Testing the above model
-aceg = gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
-tail(aceg[[1]])
-tail(aceg[[2]])
-tail(aceg[[3]])
-tail(aceg[[4]])
-```
-
-
-```{r}
-# Combine everything into a plot matrix
-# uvcav_1
-plot_mat = cbind(pc_df[1008:1257,1], mv_fcst$yhat[1:250], mv_fcst_art1$yhat[1:250], mv_fcst_art2$yhat[1:250], mv_fcst_art3$yhat[1:250], uvcav_1[1008:1257]*(-1), uvcav_2[1008:1257]*(-1), uvcav_3[1008:1257]*(-1), uvcav_4[1008:1257]*(-1))
-
-# model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
-
-# Add descriptive titles onto the plot_mat
-colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
-
-head(plot_mat)
-ncol(plot_mat)
-```
-
 ## MV Caviar - Plotting function
 
 ```{r}
@@ -1204,7 +1145,7 @@ ncol(plot_mat)
 #' @return 
 #' @export - a plot of the data by diffusion index number
 #'
-#' @examples = plt_data(plot_mtx[[1]])
+#' @examples = plt_data(plot_mtx[[1]]), abc = plt_data(plot_mat, tau = 0.01)
 plt_data = function(plot_matrix, tau){
   # Establish a maximum and minimum value
   max_val = max(plot_matrix[,1:ncol(plot_matrix)])
@@ -1212,7 +1153,9 @@ plt_data = function(plot_matrix, tau){
   # Create an initial plot and add lines
     for (i in 1:ncol(plot_matrix)){
       if (i == 1){
-        plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
+        # 4/2/2020 - fixing the index
+        plot.ts(plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
+        # plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
     } else if(i %in% seq(2,8,1)) {
         lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
     } else {
@@ -1226,16 +1169,6 @@ plt_data = function(plot_matrix, tau){
   # abline(h = 0, col = "black", lty = 2)
 }
 
-```
-
-```{r}
-# plot_mat[,2]
-# plot.ts(index(plot_mat),plot_mat[,1], type = "l")
-# lines(index(plot_mat), plot_mat[,2])
-# as.Date(plot_mat[,1])
-abc = plt_data(plot_mat, tau = 0.01)
-
-# abc
 ```
 
 ## MV Caviar - Old Loss Test Function
@@ -1269,68 +1202,6 @@ loss_test = function(true_vec, pred_vec, tau){
   varbreak = sum(bvec)/length(bvec)
   return(list(sumloss,lvec, varbreak, bvec))
 }
-```
-
-
-```{r}
-# Calculate the losses
-loss_mv = loss_test(pc_df[1008:1257,1], mv_fcst$yhat[1:250], tau = 0.01)[[1]]
-loss_uv1 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_1[1008:1257])*(-1), tau = 0.01)[[1]]
-loss_uv2 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_2[1008:1257])*(-1), tau = 0.01)[[1]]
-loss_uv3 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_3[1008:1257])*(-1), tau = 0.01)[[1]]
-loss_uv4 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_4[1008:1257])*(-1), tau = 0.01)[[1]]
-
-# Combine into a vector
-loss_vec = c(loss_mv, loss_uv1, loss_uv2, loss_uv3, loss_uv4)
-
-# Calculate the VaR breaks
-break_mv = loss_test(pc_df[1008:1257,1], mv_fcst$yhat[1:250], tau = 0.01)[[3]]
-break_uv1 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_1[1008:1257])*(-1), tau = 0.01)[[3]]
-break_uv2 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_2[1008:1257])*(-1), tau = 0.01)[[3]]
-break_uv3 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_3[1008:1257])*(-1), tau = 0.01)[[3]]
-break_uv4 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_4[1008:1257])*(-1), tau = 0.01)[[3]]
-
-# Combine into a vector
-break_vec = c(break_mv, break_uv1, break_uv2, break_uv3, break_uv4)
-
-# Combine into a data frame
-df = as.data.frame(rbind(loss_vec, break_vec))
-# Add row/column names
-colnames(df) <- c("Multivariate CAViaR", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
-rownames(df) <- c("Losses", "VaR Breaks (%)")
-# Convert to a table
-  df %>% kable(caption = "Comparison of VaR Methods", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
-
-
-```
-
-
-```{r}
-# Calculate an indicator variable
-ind = ifelse(y[orig+i] < yhat[i], 1,0)
-# Use indicator in function below
-lvec[i] = (tau - ind)*(y[orig+i] - yhat[i])
-
-
-uvcav_1
-
-# lines(var_1pc$yhat[1:300], col = "red", lty = 2)
-
-# mod_di = function (y, x, orig, m, tau) 
-
-ts.plot(mv_fcst$yhat)
-lines(pc_df[1028:1257,1], col = "red")
-```
-
-
-```{r}
-var_1pc_k1 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
-var_1pc_k3 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
-var_1pc_k5 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
-
-# var_1pc_k3
-
-
 ```
 
 
@@ -1373,14 +1244,19 @@ gen_loss_test = function(data_mat, tau){
 ```
 
 
-```{r}
-l_list = gen_loss_test(plot_mat, 0.01)
-l_list[[1]]
-```
-
 ## MV Caviar - Tables function
 
 ```{r}
+#' A function to make a nice comparison of losses
+#'
+#' @param data_mat - input data matrix used in the calculation of losses
+#' @param loss_list - a list of the losses calculated from the CAViaR function
+#' @param tau - the risk level used
+#'
+#' @return
+#' @export - returns a nicely formatted table
+#'
+#' @examples - pretty_tables(plot_mat, l_list, tau = 0.01)
 pretty_tables = function(data_mat, loss_list, tau){
   # Combine into a data frame
   df = as.data.frame(rbind(loss_list[[1]], loss_list[[2]]))
@@ -1390,10 +1266,6 @@ pretty_tables = function(data_mat, loss_list, tau){
   # Convert to a table
   df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
 }
-```
-
-```{r}
-pretty_tables(plot_mat, l_list, tau = 0.01)
 ```
 
 
@@ -1416,39 +1288,38 @@ pretty_tables(plot_mat, l_list, tau = 0.01)
 #' @param high_m  - low number of predictors to test
 #' @param uv_list - a list of a pre-run univariate model. If a data frame is not provided, the lengthy uv model will run 
 #' @param no_run - things not to run in the model
+#' @param low_p - low value for number of lags
+#' @param high_p - high value for number of lags
+#' @param na_interp - should the function interpolate NA's
+#' @param print_mdl - print the model summaries?
+#' @param print_mp - print the optimal values for p and m
 #'
 #' @return - a list of the plot matrix, a plot, a list with losses, and a table
 #' @export - a plot and a table
 #'
 #' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print = 0){
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0){
   # Select data parameters, pull the data, and percent change the data
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
   # Take the percent change of the data
   pc_df = pc_diff_index(df)
-  # print(pc_df)
   # Extract the legnth of the data frame
   nr = test_end = nrow(pc_df)
   # Calculate the start of the val period, the end of the val period, and the beginning and end of test period
   test_orig = test_end - ntest
   val_end = test_orig
   val_orig = test_orig - nval
-  # print(c(val_orig, val_end, test_orig, test_end))
-  # nrow = 100; ntest = 10; nval = 10
-  # test_orig should be 90, val_orig should be 80.
-  # test_org = 100 - 10 = 90, implying 91 to 100 should be tested
-  # val_end = 90, val_start should be 80, implying 81 to 90 should be tested
   # Test for the optimal number of parameters
   opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m)
-  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1, print = print)
-  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2, print = print)
-  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3, print = print)
+  opt_pred_art1 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p,mod_di = 1, ar_tf = 1, print_mdl = print_mdl, print_mp = print_mp)
+  opt_pred_art2 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p,mod_di = 1, ar_tf = 2, print_mdl = print_mdl, print_mp = print_mp)
+  opt_pred_art3 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p, mod_di = 1, ar_tf = 3, print_mdl = print_mdl, print_mp = print_mp)
   # gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
   # Use the above forecasts to input into the above
-  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau, print = print)
-  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1, print = print)
-  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2, print = print)
-  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3, print = print)
+  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau, print_mdl = print_mdl)
+  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], p = opt_pred_art1[[2]], tau = tau, ar_tf = 1, print_mdl = print_mdl)
+  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], p = opt_pred_art2[[2]], tau = tau, ar_tf = 2, print_mdl = print_mdl)
+  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], p = opt_pred_art3[[2]], tau = tau, ar_tf = 3, print_mdl = print_mdl)
   # Calculate the number of predictions
   if (is.null(uv_list) == TRUE){
     # Print a warning
@@ -1456,7 +1327,6 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
     # Call the function
     uv_list = gen_uv_test(pc_df, ntest, tau, no_run = no_run)
   }
-  # npred = (nrow(pc_df)-(test_orig))
   # Incorporate the rolling predictions function results here
   plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_list[[1]][(test_orig+1):test_end]*(-1), uv_list[[2]][(test_orig+1):test_end]*(-1), uv_list[[3]][(test_orig+1):test_end]*(-1), uv_list[[4]][(test_orig+1):test_end]*(-1))
   # Count the NAs and print a warning
@@ -1490,45 +1360,50 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
 ```
 
 ```{r}
-var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 3, low_m = 1, high_m = 5, tau = 0.01)
+var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 3, low_m = 1, high_m = 5, low_p = 1, high_p = 10, tau = 0.01, print_mp = 1)
 # tail(var_1pc_2008_sm)
 
 var_1pc_2008_sm
 ```
 
-To test this function, we're going to combine all the univariate CAViaR parts into one list - STM 2/22/20.
-
 ```{r}
-uv_cav_list = list(uvcav_1, uvcav_2, uvcav_3, uvcav_4)
-```
+# Let's fit the plot matrix - 4/2/20
+plot_matrix = var_1pc_2008_sm[[1]]
+tau = 0.01
 
+plot.ts(plot_matrix[,1])
 
-```{r}
-# function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
-# Test the big function
-big_test_mod = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
-
-head(big_test[[1]])
-nrow(big_test[[1]])
-nrow(big_test_mod[[1]])
-head(big_test_mod[[1]])
-big_test_mod[[4]]
-big_test[[4]]
-# diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
+# Establish a maximum and minimum value
+max_val = max(plot_matrix[,1:ncol(plot_matrix)])
+min_val = min(plot_matrix[,1:ncol(plot_matrix)])
+# Create an initial plot and add lines
+  for (i in 1:ncol(plot_matrix)){
+    if (i == 1){
+      plot.ts(plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
+  } else if(i %in% seq(2,8,1)) {
+      lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
+  } else {
+      lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2, lwd = 2)
+  }
+  }
+# Define a sequence for plotting
+plot_seq = seq(1, ncol(plot_matrix))
+legend("topleft", legend = c(colnames(plot_matrix)), col = plot_seq, lty = c(1, rep(2, 7), rep(3, ifelse(ncol(plot_matrix)-8 <= 0, 0, ncol(plot_matrix)-8))), lwd = c(1, rep(1, 7), rep(2, ifelse(ncol(plot_matrix)-8 <= 0, 0, ncol(plot_matrix)-8))))
+# Add a line for 0
+# abline(h = 0, col = "black", lty = 2)
 ```
 
 # Test runs
 
 Here we're going to test a 1, 5 and 10% VaR run.
+Today, I'm just going to kick off the 1% run and analyze it.
 
-
- 
 ```{r}
-var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
-# var_1pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
-var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
-var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
-var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
+# var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
+var_1pc_2008_mp = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
+# var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
+# var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
+# var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
 
 
 
@@ -1536,107 +1411,6 @@ var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", 
 
 ```
 
-```{r}
-# Replace NA's with 0s
-plt_005 = var_0_05_pc_2008[[1]]
-plt_005[is.na(plt_005)] <- 0
-
-plt_data(plt_005)
-```
-
-
-Rerunning the 1% model again.
-
-```{r}
-# 2/25/20 - I expect this to converge.
-var_1pc_2008_r2 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
-
-var_1pc
-```
-
-
-```{r}
-# Diagnose why there are missing values in the indirect GARCH call
-var_1pc_2008[[3]][[3]][,7]
-
-# Missing value at 152. This wasn't here earlier.
-ts.plot(var_1pc_2008[[3]][[3]][,7])
-
-# Let's inspect the underlying data - seems fine. Why would we get different values from before?
-var_1pc_2008[[1]][,1][150:155]
-
-# Let's try running the underlying function
-ind_garch_1pc = gen_uv_test(pc_df, 250, 0.01, no_run = c(1,1,0,1))
-ind_garch_1pc
-# pc_df
-
-
-# Look at the last 250 obs
-tail(ind_garch_1pc[[3]], 250)
-tail(ind_garch_1pc[[3]])
-
-# Do a side-by-side comparison
-plot.ts(var_1pc_2008[[3]][[3]][,7]*(-1))
-tail(ind_garch_1pc[[3]], 5)*(-1)
-var_1pc_2008[[3]][[3]][,7]*(-1)
-
-ind_garch_var = tail(ind_garch_1pc[[3]], 250)*(-1)
-(ind_garch_var) - var_1pc_2008[[3]][[3]][,7]
-head(var_1pc_2008[[3]][[3]][,7])
-head(ind_garch_var)
-
-# Let's see what the previous univariate run produced
-old_run_ig = tail(uvcav_3, 250)
-big_model_ig = var_1pc_2008[[1]][,7]
-tail(ind_garch_var)
-tail(old_run_ig)
-
-
-# So there's 3 different series
-# The first is for the run called in the first "rolling predictions" function - old_run_ig
-# The second is for the one from the gen_uv_test function - ind_garch_var
-# The third is for the one from the cav_simul function - big_model_ig
-
-# comp_mat_3 = cbind(old_run_ig*(-1), ind_garch_var, big_model_ig*(-1))
-# comp_mat_3
-
-# In theory, all three of these should be identical, or at least very very close because of the optimization involved. By and large, 1 and 2 are indeed close. 3 isn't close at all.
-
-# Let's do quick sanity checks for the other runs
-comp_mat_1 = cbind(tail(uvcav_1, 250)*(-1), var_1pc_2008[[1]][,6])
-comp_mat_2 = cbind(tail(uvcav_2, 250)*(-1), var_1pc_2008[[1]][,7])
-comp_mat_3 = cbind(tail(uvcav_3, 250)*(-1), var_1pc_2008[[1]][,8])
-comp_mat_3a = cbind(tail(uvcav_3, 250)*(-1), var_1pc_2008[[1]][,8], tail(ind_garch_1pc[[3]], 250)*(-1))
-comp_mat_4 = cbind(tail(uvcav_4, 250)*(-1), var_1pc_2008[[1]][,9])
-
-# Plot the data
-plot(comp_mat_1)
-plot(comp_mat_2)
-plot(comp_mat_3)
-plot(comp_mat_3a)
-comp_mat_3a
-plot(comp_mat_4)
-comp_mat_2
-comp_mat_3
-# (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) (defaults to 1)
-comp_mat_4
-
-# Are we even calling the right things? I was calling the losses!
-
-```
-
-Fixing the NAs in the data to send to Wei Biao. Will also serve as a test. This is on 3/3/20.
-
-```{r}
-tm_123 = var_0_05_pc_2008[[1]]
-for (i in 1:ncol(tm_123)){
-  # Interpolate the data
-  tm_123[,i] <- na.approx(tm_123[,i])
-}
-# sum(is.na(tm_123))
-
-
-```
 
 ```{r}
 # Write a function to fix the NAs and output a plot and the table
@@ -1701,7 +1475,7 @@ var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG"
 # Stock simulation
 
 
-# JUNK CODE
+##### JUNK CODE ########
 
 This function uses an absolute reference to the number of forecasts to perform. I'm changing this to make it compatible with the uv_cav1 model.
 
@@ -2016,4 +1790,371 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1
       DFindex = Dindex)
 }
 
+```
+
+```{r}
+# Find the optimal number of predictors
+opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5)
+opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
+opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
+opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m = 5, mod_di = 1, ar_tf = 1)
+
+opt_pred_nl
+opt_pred_art1
+opt_pred_art2
+opt_pred_art3
+
+# test1 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 1, 0.01)[[1]]
+# test2 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 2, 0.01)[[1]]
+# test3 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 3, 0.01)[[1]]
+# test4 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 4, 0.01)[[1]]
+# test5 = loss_calc(pc_df[,1], pc_df[,-1], 757, 1027, 5, 0.01)[[1]]
+
+# print(c(test1, test2, test3, test4, test5))
+
+```
+
+Old "master function"
+
+```{r}
+#' This is the "master" function where we'll evaluate the importance of the VaR model over several time periods
+#'
+#' @param symbol_list - a list of symbols to feed into the model 
+#' @param resp_var - the response variable
+#' @param compl_case - should the model require complete cases? Default value is 1.
+#' @param adj_close - use adjusted close price for the predictors? Default value is 1.
+#' @param resp_adj_close - use adjusted close price for the response? Default value is 1.
+#' @param start_date - start date to pull data from
+#' @param end_date - end date to pull data from
+#' @param nval - number of validation points to use
+#' @param ntest - number of test points to use
+#' @param tau - VaR level to use
+#' @param low_m - low number of predictors to test
+#' @param high_m  - low number of predictors to test
+#' @param uv_list - a list of a pre-run univariate model. If a data frame is not provided, the lengthy uv model will run 
+#' @param no_run - things not to run in the model
+#'
+#' @return - a list of the plot matrix, a plot, a list with losses, and a table
+#' @export - a plot and a table
+#'
+#' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print = 0){
+  # Select data parameters, pull the data, and percent change the data
+  df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
+  # Take the percent change of the data
+  pc_df = pc_diff_index(df)
+  # print(pc_df)
+  # Extract the legnth of the data frame
+  nr = test_end = nrow(pc_df)
+  # Calculate the start of the val period, the end of the val period, and the beginning and end of test period
+  test_orig = test_end - ntest
+  val_end = test_orig
+  val_orig = test_orig - nval
+  # print(c(val_orig, val_end, test_orig, test_end))
+  # nrow = 100; ntest = 10; nval = 10
+  # test_orig should be 90, val_orig should be 80.
+  # test_org = 100 - 10 = 90, implying 91 to 100 should be tested
+  # val_end = 90, val_start should be 80, implying 81 to 90 should be tested
+  # Test for the optimal number of parameters
+  opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m)
+  opt_pred_art1 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 1, print = print)
+  opt_pred_art2 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 2, print = print)
+  opt_pred_art3 = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, mod_di = 1, ar_tf = 3, print = print)
+  # gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
+  # Use the above forecasts to input into the above
+  mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau, print = print)
+  mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], tau = tau, ar_tf = 1, print = print)
+  mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], tau = tau, ar_tf = 2, print = print)
+  mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], tau = tau, ar_tf = 3, print = print)
+  # Calculate the number of predictions
+  if (is.null(uv_list) == TRUE){
+    # Print a warning
+    print("WARNING: Not supplying an input data frame will require this function to run for a significant amount of time (1hr+)")
+    # Call the function
+    uv_list = gen_uv_test(pc_df, ntest, tau, no_run = no_run)
+  }
+  # npred = (nrow(pc_df)-(test_orig))
+  # Incorporate the rolling predictions function results here
+  plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_list[[1]][(test_orig+1):test_end]*(-1), uv_list[[2]][(test_orig+1):test_end]*(-1), uv_list[[3]][(test_orig+1):test_end]*(-1), uv_list[[4]][(test_orig+1):test_end]*(-1))
+  # Count the NAs and print a warning
+  print(paste("NOTE: There are ", sum(is.na(plot_mat)), " NA(s) in the dataset", sep = ""))
+  # Linearly interpolate the NAs
+  if (na_interp == TRUE){
+    # Assign the plot matrix to a new value
+    plot_mat_na <- plot_mat
+    # Print a warning
+    print("WARNING: There were missing values in the plot matrix.")
+    # Interpolate the NA's
+    for (i in 1:ncol(plot_mat_na)){
+      # Interpolate the data
+      plot_mat[,i] <- na.approx(plot_mat_na[,i])
+    }
+  }
+  # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE)
+  # Add descriptive titles onto the plot_mat
+  colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+  # Plot everything
+  plot = plt_data(plot_mat, tau = tau)
+  # Calculate losses
+  l_list = gen_loss_test(plot_mat, tau = tau)
+  # Put into tables
+  tables = pretty_tables(plot_mat, l_list, tau = tau)
+  # Print the tables and the plot
+  print(plot)
+  print(tables)
+  return(list(plot_mat, plot, l_list, tables, plot_mat_na))
+}
+```
+
+
+All of the optimal parameters to consider are 3.
+
+```{r}
+# Run the model
+mv_fcst = mod_di(pc_df[,1], pc_df[,-1], 1007, 3, 0.01)
+mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 1)
+mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 2)
+mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], 1007, 3, 0.01, ar_tf = 3)
+
+# Run the model for the other three scenarios
+
+# mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print = 0, model = 1)
+
+```
+
+```{r}
+# Warning!! These can take a while to run (~1 hour). Proceed with caution.
+
+# Run the univariate CAViaR models - these take a while. Be careful.
+# uvcav_1 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 1, G = 10, col = 1, level = 0.01)
+# uvcav_2 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 2, G = 10, col = 1, level = 0.01)
+# uvcav_3 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 3, G = 10, col = 1, level = 0.01)
+# uvcav_4 = rolling_predictions(pc_df[,1], range_data = (1:length(pc_df[,1])), nfcst = 250, model = 4, G = 10, col = 1, level = 0.01)
+```
+
+
+```{r}
+# Testing the above model
+aceg = gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
+tail(aceg[[1]])
+tail(aceg[[2]])
+tail(aceg[[3]])
+tail(aceg[[4]])
+```
+
+
+```{r}
+# Combine everything into a plot matrix
+# uvcav_1
+plot_mat = cbind(pc_df[1008:1257,1], mv_fcst$yhat[1:250], mv_fcst_art1$yhat[1:250], mv_fcst_art2$yhat[1:250], mv_fcst_art3$yhat[1:250], uvcav_1[1008:1257]*(-1), uvcav_2[1008:1257]*(-1), uvcav_3[1008:1257]*(-1), uvcav_4[1008:1257]*(-1))
+
+# model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) 
+
+# Add descriptive titles onto the plot_mat
+colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+
+head(plot_mat)
+ncol(plot_mat)
+```
+
+```{r}
+# plot_mat[,2]
+# plot.ts(index(plot_mat),plot_mat[,1], type = "l")
+# lines(index(plot_mat), plot_mat[,2])
+# as.Date(plot_mat[,1])
+
+
+# abc
+```
+
+
+```{r}
+# Calculate the losses
+loss_mv = loss_test(pc_df[1008:1257,1], mv_fcst$yhat[1:250], tau = 0.01)[[1]]
+loss_uv1 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_1[1008:1257])*(-1), tau = 0.01)[[1]]
+loss_uv2 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_2[1008:1257])*(-1), tau = 0.01)[[1]]
+loss_uv3 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_3[1008:1257])*(-1), tau = 0.01)[[1]]
+loss_uv4 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_4[1008:1257])*(-1), tau = 0.01)[[1]]
+
+# Combine into a vector
+loss_vec = c(loss_mv, loss_uv1, loss_uv2, loss_uv3, loss_uv4)
+
+# Calculate the VaR breaks
+break_mv = loss_test(pc_df[1008:1257,1], mv_fcst$yhat[1:250], tau = 0.01)[[3]]
+break_uv1 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_1[1008:1257])*(-1), tau = 0.01)[[3]]
+break_uv2 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_2[1008:1257])*(-1), tau = 0.01)[[3]]
+break_uv3 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_3[1008:1257])*(-1), tau = 0.01)[[3]]
+break_uv4 = loss_test(pc_df[1008:1257,1], as.ts(uvcav_4[1008:1257])*(-1), tau = 0.01)[[3]]
+
+# Combine into a vector
+break_vec = c(break_mv, break_uv1, break_uv2, break_uv3, break_uv4)
+
+# Combine into a data frame
+df = as.data.frame(rbind(loss_vec, break_vec))
+# Add row/column names
+colnames(df) <- c("Multivariate CAViaR", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+rownames(df) <- c("Losses", "VaR Breaks (%)")
+# Convert to a table
+  df %>% kable(caption = "Comparison of VaR Methods", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
+
+
+```
+
+
+```{r}
+# Calculate an indicator variable
+ind = ifelse(y[orig+i] < yhat[i], 1,0)
+# Use indicator in function below
+lvec[i] = (tau - ind)*(y[orig+i] - yhat[i])
+
+
+uvcav_1
+
+# lines(var_1pc$yhat[1:300], col = "red", lty = 2)
+
+# mod_di = function (y, x, orig, m, tau) 
+
+ts.plot(mv_fcst$yhat)
+lines(pc_df[1028:1257,1], col = "red")
+```
+
+
+```{r}
+var_1pc_k1 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
+var_1pc_k3 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
+var_1pc_k5 = mod_di(pc_df[,1], pc_df[,-1], 757, 1, 0.01)
+
+# var_1pc_k3
+
+
+```
+
+```{r}
+l_list = gen_loss_test(plot_mat, 0.01)
+l_list[[1]]
+```
+
+
+```{r}
+# Replace NA's with 0s
+plt_005 = var_0_05_pc_2008[[1]]
+plt_005[is.na(plt_005)] <- 0
+
+plt_data(plt_005)
+```
+
+
+Rerunning the 1% model again.
+
+```{r}
+# 2/25/20 - I expect this to converge.
+var_1pc_2008_r2 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
+
+var_1pc
+```
+
+
+```{r}
+# Diagnose why there are missing values in the indirect GARCH call
+var_1pc_2008[[3]][[3]][,7]
+
+# Missing value at 152. This wasn't here earlier.
+ts.plot(var_1pc_2008[[3]][[3]][,7])
+
+# Let's inspect the underlying data - seems fine. Why would we get different values from before?
+var_1pc_2008[[1]][,1][150:155]
+
+# Let's try running the underlying function
+ind_garch_1pc = gen_uv_test(pc_df, 250, 0.01, no_run = c(1,1,0,1))
+ind_garch_1pc
+# pc_df
+
+
+# Look at the last 250 obs
+tail(ind_garch_1pc[[3]], 250)
+tail(ind_garch_1pc[[3]])
+
+# Do a side-by-side comparison
+plot.ts(var_1pc_2008[[3]][[3]][,7]*(-1))
+tail(ind_garch_1pc[[3]], 5)*(-1)
+var_1pc_2008[[3]][[3]][,7]*(-1)
+
+ind_garch_var = tail(ind_garch_1pc[[3]], 250)*(-1)
+(ind_garch_var) - var_1pc_2008[[3]][[3]][,7]
+head(var_1pc_2008[[3]][[3]][,7])
+head(ind_garch_var)
+
+# Let's see what the previous univariate run produced
+old_run_ig = tail(uvcav_3, 250)
+big_model_ig = var_1pc_2008[[1]][,7]
+tail(ind_garch_var)
+tail(old_run_ig)
+
+
+# So there's 3 different series
+# The first is for the run called in the first "rolling predictions" function - old_run_ig
+# The second is for the one from the gen_uv_test function - ind_garch_var
+# The third is for the one from the cav_simul function - big_model_ig
+
+# comp_mat_3 = cbind(old_run_ig*(-1), ind_garch_var, big_model_ig*(-1))
+# comp_mat_3
+
+# In theory, all three of these should be identical, or at least very very close because of the optimization involved. By and large, 1 and 2 are indeed close. 3 isn't close at all.
+
+# Let's do quick sanity checks for the other runs
+comp_mat_1 = cbind(tail(uvcav_1, 250)*(-1), var_1pc_2008[[1]][,6])
+comp_mat_2 = cbind(tail(uvcav_2, 250)*(-1), var_1pc_2008[[1]][,7])
+comp_mat_3 = cbind(tail(uvcav_3, 250)*(-1), var_1pc_2008[[1]][,8])
+comp_mat_3a = cbind(tail(uvcav_3, 250)*(-1), var_1pc_2008[[1]][,8], tail(ind_garch_1pc[[3]], 250)*(-1))
+comp_mat_4 = cbind(tail(uvcav_4, 250)*(-1), var_1pc_2008[[1]][,9])
+
+# Plot the data
+plot(comp_mat_1)
+plot(comp_mat_2)
+plot(comp_mat_3)
+plot(comp_mat_3a)
+comp_mat_3a
+plot(comp_mat_4)
+comp_mat_2
+comp_mat_3
+# (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE) (defaults to 1)
+comp_mat_4
+
+# Are we even calling the right things? I was calling the losses!
+
+```
+
+Fixing the NAs in the data to send to Wei Biao. Will also serve as a test. This is on 3/3/20.
+
+```{r}
+tm_123 = var_0_05_pc_2008[[1]]
+for (i in 1:ncol(tm_123)){
+  # Interpolate the data
+  tm_123[,i] <- na.approx(tm_123[,i])
+}
+# sum(is.na(tm_123))
+
+
+```
+
+
+To test this function, we're going to combine all the univariate CAViaR parts into one list - STM 2/22/20.
+
+```{r}
+uv_cav_list = list(uvcav_1, uvcav_2, uvcav_3, uvcav_4)
+```
+
+
+```{r}
+# function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
+# Test the big function
+big_test_mod = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
+
+head(big_test[[1]])
+nrow(big_test[[1]])
+nrow(big_test_mod[[1]])
+head(big_test_mod[[1]])
+big_test_mod[[4]]
+big_test[[4]]
+# diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
 ```
