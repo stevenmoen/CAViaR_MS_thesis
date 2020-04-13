@@ -490,7 +490,7 @@ Let's just see if there is any merit to just regressing one set of stocks on ano
 ```{r}
 # Predictors
 # ?SWfore
-# SWfore
+SWfore
 ```
 
 ## MV Caviar - Pulling the data
@@ -563,6 +563,7 @@ pc_diff_index = function(diff_df){
 ```{r}
 df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
 pc_df = pc_diff_index(df)
+head(pc_df)
 
 # Check the dimensions
 dim(pc_df)
@@ -667,6 +668,8 @@ mod_di = function (y, x, orig, m, tau, end = NULL, print_mdl = 0)
 }
 
 ```
+
+
 
 Now that we have the function, let's see if we can get it to work. First, we'll need to compile all of our data
 
@@ -1154,7 +1157,7 @@ plt_data = function(plot_matrix, tau){
     for (i in 1:ncol(plot_matrix)){
       if (i == 1){
         # 4/2/2020 - fixing the index
-        plot.ts(plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
+        plot.ts(index(plot_matrix),plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
         # plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
     } else if(i %in% seq(2,8,1)) {
         lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
@@ -1405,7 +1408,8 @@ var_1pc_2008_mp = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG"
 # var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
 # var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
 
-
+plt_data(var_1pc_2008_mp[[1]], tau = 0.01)
+var_1pc_2008_mp[[4]]
 
 
 
