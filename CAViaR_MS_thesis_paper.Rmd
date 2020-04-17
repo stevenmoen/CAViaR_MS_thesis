@@ -49,8 +49,10 @@ library(MTS)
 library(plot3D)
 
 # Set up working directory
-setwd("~/Documents/GitHub/CaviaR")
-source('caviar_SM.R')
+# setwd("~/Documents/GitHub/CaviaR")
+
+# source('caviar_SM.R')
+source('~/Documents/GitHub/CaviaR/caviar_SM.R')
 ```
 
 ```{r}
@@ -241,256 +243,7 @@ stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
 ```{r}
 # Above concludes the CAViaR Code
 
-# Below is for the simulation study
-```
-
-## Simulation Studies
-
-```{r}
-# Low to high volatility series
-lth_series = stock_simul(500, 25, 0.001, -0.005, 0.001, 0.01)
-mth_series = stock_simul(500, 25, 0.001, -0.005, 0.005, 0.01)
-hth_series = stock_simul(500, 25,  0.001, -0.005, 0.01, 0.01)
-```
-
-
-```{r}
-# Plot the data
-plot(lth_series, type = "l", ylim = c(0.8, 1.8), xlab = "Days", ylab = "Growth (Indexed to 1)", main = "Growth Comparison of 3 Simulated Stocks")
-lines(mth_series, type = "l", col = "red")
-lines(hth_series, type = "l", col = "blue")
-legend("bottomright", legend=c("Low Vol. Stock", "Mid Vol. Stock", "High Vol. Stock"),col=c("black", "red", "blue"), lty = c(1,1,1))
-
-# Transform the data to be differenced log data
-dl_lth <- diff(log(lth_series))
-dl_mth <- diff(log(mth_series))
-dl_hth <- diff(log(hth_series))
-
-
-
-# Plot the differenced data
-plot(dl_lth, type = "l", xlab = "Days", ylab = "Differenced Log Growth", ylim = c(-0.04, 0.04), main = "Log  Growth Rate Comparisons of 3 Simulated Stocks")
-lines(dl_mth, type = "l", col = "red")
-lines(dl_hth, type = "l", col = "blue")
-legend("bottomright", legend=c("Low Vol. Stock", "Mid Vol. Stock", "High Vol. Stock"),col=c("black", "red", "blue"), lty = c(1,1,1))
-```
-
-
-```{r}
-# Let's test the series
-m1_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 1, G = 10, col = 1)
-m2_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 2, G = 10, col = 1)
-m3_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 3, G = 10, col = 1)
-m4_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 4, G = 10, col = 1)
-
-# Let's test the series
-m1_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 1, G = 10, col = 1)
-m2_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 2, G = 10, col = 1)
-m3_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 3, G = 10, col = 1)
-m4_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 4, G = 10, col = 1)
-
-# Let's test the series
-m1_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 1, G = 10, col = 1)
-m2_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 2, G = 10, col = 1)
-m3_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 3, G = 10, col = 1)
-m4_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 4, G = 10, col = 1)
-```
-
-```{r}
-
-```
-
-```{r}
-# First plot - LTH VaR
-plot(dl_lth[500:524], type = "l", ylim = c(-0.04, 0.04), xlab = "Forecast Day", ylab = "Log Return", main = "VaR Forecast in High-Volatility Environment for a Low-Vol. Stock")
-legend("topright", legend=c("Simulated Return", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"),col=c("black", "red", "green", "blue", "purple"), lty = c(1,2,2,2,2))
-lines(m1_lth[2:26]*(-1), col = "red", lty = 2)
-lines(m2_lth[2:26]*(-1), col = "green", lty = 2)
-lines(m3_lth[2:26]*(-1), col = "blue", lty = 2)
-lines(m4_lth[2:26]*(-1), col = "purple", lty = 2)
-
-# Second plot - MTH VaR
-plot(dl_mth[500:524], type = "l", ylim = c(-0.04, 0.04), xlab = "Forecast Day", ylab = "Log Return", main = "VaR Forecast in High-Volatility Environment for a Mid-Vol. Stock")
-legend("topright", legend=c("Simulated Return", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"),col=c("black", "red", "green", "blue", "purple"), lty = c(1,2,2,2,2))
-lines(m1_mth[2:26]*(-1), col = "red", lty = 2)
-lines(m2_mth[2:26]*(-1), col = "green", lty = 2)
-lines(m3_mth[2:26]*(-1), col = "blue", lty = 2)
-lines(m4_mth[2:26]*(-1), col = "purple", lty = 2)
-
-# Second plot - HTH VaR
-plot(dl_hth[500:524], type = "l", ylim = c(-0.04, 0.04), xlab = "Forecast Day", ylab = "Log Return", main = "VaR Forecast in High-Volatility Environment for a Low-Vol. Stock")
-legend("topright", legend=c("Simulated Return", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"),col=c("black", "red", "green", "blue", "purple"), lty = c(1,2,2,2,2))
-lines(m1_hth[2:26]*(-1), col = "red", lty = 2)
-lines(m2_hth[2:26]*(-1), col = "green", lty = 2)
-lines(m3_hth[2:26]*(-1), col = "blue", lty = 2)
-lines(m4_hth[2:26]*(-1), col = "purple", lty = 2)
-
-```
-
-That doesn't look promising. What if we just look at the last 10?
-
-```{r}
-# Let's test the series
-m1_hth_sm = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 10, model = 1, G = 10, col = 1)
-```
-
-```{r}
-plot(dl_hth[515:524], type = "l", ylim = c(-0.04, 0.04))
-lines(m1_hth_sm[1:10], col = "red")
-```
-
-Not good. Let's look at an in-sample test.
-
-```{r}
-# Let's test the series in sample
-m1_hth_sm_is_05 = rolling_predictions(dl_hth, range_data = (1:400), nfcst = 10, model = 1, level = 0.05, G = 10, col = 1)
-m1_hth_sm_is_01 = rolling_predictions(dl_hth, range_data = (1:400), nfcst = 10, model = 1, level = 0.01, G = 10, col = 1)
-
-
-```
-
-```{r}
-plot(dl_hth[390:399], type = "l", ylim = c(-0.04, 0.04))
-lines(m1_hth_sm_is_05[1:10], col = "red")
-lines(m1_hth_sm_is_01[1:10], col = "green")
-```
-
-```{r}
-# We may need to expand this to other areas. Ask Wei Biao for simulation advice.
-```
-
-## Multivariate Simulation Study
-
-Real data is messy, but simulation could give us some idea of whether combining all the stocks into a pool could give a lift.
-
-```{r}
-#' Stock simulation for use in CAViaR simulation study
-#'
-#' @param n1 - number of data points in first series
-#' @param n2 - number of data points in second series
-#' @param s1_sd - standard deviation of first series
-#' @param s2_sd - standard deviation of second series 
-#' @param s1_mean - mean of first series 
-#' @param s2_mean - mean of second series 
-#' @param rseed - random seed for reproducibility
-#'
-#' @return - output time series
-#' @export
-#'
-#' @examples hth_series = stock_simul(100, 25, 10, 10)
-stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
-  # Set random seed
-  set.seed(rseed)
-  # Initialize vector and put first value in the series
-  s1 <- rep(1, n1)
-  # Simulate first series
-  for (i in 2:n1){
-    s1[i] <- s1[i-1]*(1+s1_gr) + rnorm(1, mean = 0, sd = s1_sd)
-  }
-  # Initialize vector
-  s2 <- rep(1, n2)
-  # Put first value in
-  s2[1] <- s1[n1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
-  # Simulate second series
-  for (i in 2:n2){
-    s2[i] <- s2[i-1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
-  }
-  # Combine the two series
-  long <- as.matrix(c(s1, s2))
-  # Export the data
-  return(long)
-}
-
-# test <- lth_series[500,1]*(1)
-
-```
-
-
-
-
-
-
-```{r}
-#' Stock data generator for use in CAViaR simulation study
-#' For maximum flexibility, this will only generate one series with one variance and growth rate.
-#' Note that for simplicity, this is modeling the percentage change
-#' 
-#' @param t - number of time data points
-#' @param mu - the mean return in a given day
-#' @param sigma - the standard deviation
-#' @param rseed - random seed for reproducibility. Default is NULL
-#'
-#' @return - output percentage changes of a stock
-#' @export
-#'
-#' @examples dat_gen(1000, 0.001, 0.1)
-dat_gen = function(t, mu, sigma, rseed = NULL){
-  # Have an option for with and without random seed
-  if (is.null(rseed) == TRUE){
-    dat = rnorm(t, mu, sigma)
-  }
-  else {
-    set.seed(rseed)
-    dat = rnorm(t, mu, sigma)
-  }
-  return(dat)
-}
-
-# mean(dat_gen(1000, 0.001, 0.1))
-
-```
-
-```{r}
-# Generalize the above vector to look at many different periods
-
-
-```
-
-# Combining a Diffusion Index Model with the Quantile Regression Model
-
-```{r}
-# Below is code that pulls real data for analysis
-```
-
-
-Response is IBM, pick 5 stocks for predictors.
-
-```{r}
-# Pull IBM
-ibm = data_pull("IBM", start_date = "1986-04-06", end_date = "1999-04-08")
-
-# Pull 10 stocks at random that existed in the DJIA over the timeframe
-# Exxon
-xom = data_pull("XOM", start_date = "1986-04-06", end_date = "1999-04-08")
-
-# PG
-pg = data_pull("PG", start_date = "1986-04-06", end_date = "1999-04-08")
-
-# General Electric
-ge = data_pull("GE", start_date = "1986-04-06", end_date = "1999-04-08")
-
-# 3M
-mmm = data_pull("MMM", start_date = "1986-04-06", end_date = "1999-04-08")
-
-# Disney
-dis = data_pull("DIS", start_date = "1986-04-06", end_date = "1999-04-08")
-
-```
-
-There is probably some work to be done with choosing these stocks. I only picked ones with data.
-
-```{r}
-# Plot the data
-# plot.xts(ibm[,2])
-
-```
-
-Let's just see if there is any merit to just regressing one set of stocks on another.
-
-```{r}
-# Predictors
-# ?SWfore
-SWfore
+# Below is for the simulation study - it's at the bottom of the junk code pile
 ```
 
 ## MV Caviar - Pulling the data
@@ -501,16 +254,21 @@ SWfore
 #' @param symbol_list - a list of symbols recognizable by the 
 #' @param resp_var - the response variable we'd like to forecast; default is SPY
 #' @param compl_case - defaults to true...only includes complete cases in the data
+#' @param adj_close - use adjusted closing prices for the explanatory variables? default is 1 for YES
+#' @param resp_adj_close - use adjusted closing prices for the explanatory variables? default is 1 for YES
+#' @param start_date - starting data to use
+#' @param end_date - ending date of the data
+#' @param lag_pred - do we lag the predictions? It is STRONGLY recommended that this is 0
 #'
 #' @return - a data frame which can be fed into the SWfore function
 #' @export
 #'
 #' @examples - diff_index_df(c("XLF", "XLE", "PSCT", "XLV", "VPU", "XLP", "IGF", "XWEB", "PPTY"))
-diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date()){
+diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), lag_pred = 1){
   # Pull in response variable
   response_pull = getSymbols(resp_var, auto.assign = FALSE, from = start_date, to = end_date)
   # Get adjusted closing price
-  if (adj_close == TRUE){
+  if (resp_adj_close == TRUE){
     diff_df = Ad(response_pull)
   } else {
     diff_df = Cl(response_pull)
@@ -525,8 +283,23 @@ diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_clos
     } else {
       expl_cl = Cl(expl_pull)
     }
-    # Join the data
-    diff_df = merge(diff_df, expl_cl, join = "left", fill = NA)
+    # New code for 4.16.2020 - lag the explanatory variables
+    if (lag_pred == TRUE){
+      # Lag the explanatory variables by 1
+      lag_exp = lag(expl_cl, 1)
+      # Append the first lag to the data frame
+      diff_df = merge(diff_df, lag_exp, join = "left", fill = NA)
+    } else{
+      # Return the data frame without lags
+      diff_df = merge(diff_df, expl_cl, join = "left", fill = NA)
+    }
+  }
+  if (lag_pred == TRUE){
+    # Chop off the first row
+    diff_df = diff_df[-1,]
+  }
+  else {
+    print("PLEASE NOTE - the explanatory variables in this DF are NOT lagged. Be careful to avoid look-ahead bias!")
   }
   # Return complete cases only 
   if (compl_case == TRUE){
@@ -534,7 +307,7 @@ diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_clos
   } else{
     diff_df_out = diff_df
   }
-  # Difference data
+  
   return(diff_df_out)
 }
 
@@ -561,14 +334,10 @@ pc_diff_index = function(diff_df){
 ```
 
 ```{r}
-df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
+# Troubleshooting the data 
+df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", lag_pred = 1)
 pc_df = pc_diff_index(df)
-head(pc_df)
 
-# Check the dimensions
-dim(pc_df)
-# head(pc_df)
-# tail(pc_df)
 ```
 
 ## MV Caviar - Modified DI code
@@ -882,10 +651,10 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print_mdl = 0, model
 Let's test to see if the new functions work.
 
 ```{r}
-var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print_mdl = 0)
-var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 3, 0.01, ar_tf = 1, print_mdl = 1, p =1)
-var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 2, print_mdl = 1, p =4)
-var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 3, print_mdl = 1, p =2)
+# var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01, print_mdl = 0)
+# var_1pc_ar1 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 3, 0.01, ar_tf = 1, print_mdl = 1, p =1)
+# var_1pc_ar2 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 2, print_mdl = 1, p =4)
+# var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 3, print_mdl = 1, p =2)
 # var_1pc_ar3$name_vector
 
 ?rq
@@ -897,11 +666,11 @@ Let's create a quick plot.
 
 ```{r}
 # Create a plot
-ts.plot(pc_df[101:400,1])
-lines(var_1pc$yhat[1:300], col = "blue", lty = 2)
-lines(var_1pc_ar1$yhat[1:300], col = "red", lty = 2)
-lines(var_1pc_ar2$yhat[1:300], col = "green", lty = 2)
-lines(var_1pc_ar3$yhat[1:300], col = "orange", lty = 2)
+# ts.plot(pc_df[101:400,1])
+# lines(var_1pc$yhat[1:300], col = "blue", lty = 2)
+# lines(var_1pc_ar1$yhat[1:300], col = "red", lty = 2)
+# lines(var_1pc_ar2$yhat[1:300], col = "green", lty = 2)
+# lines(var_1pc_ar3$yhat[1:300], col = "orange", lty = 2)
 ```
 
 
@@ -909,16 +678,16 @@ Testing the old functions
 
 ```{r}
 # See what the 5% and 1% VaR levels look like
-var_5pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.05)
-var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
-
-# Create a plot
-ts.plot(pc_df[101:400,1])
-lines(var_5pc$yhat[1:300], col = "blue", lty = 2)
-lines(var_1pc$yhat[1:300], col = "red", lty = 2)
-
-# Calculate accuracy
-var_1pc$yhat
+# var_5pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.05)
+# var_1pc = mod_di(pc_df[,1], pc_df[,-1], 100, 2, 0.01)
+# 
+# # Create a plot
+# ts.plot(pc_df[101:400,1])
+# lines(var_5pc$yhat[1:300], col = "blue", lty = 2)
+# lines(var_1pc$yhat[1:300], col = "red", lty = 2)
+# 
+# # Calculate accuracy
+# var_1pc$yhat
 ```
 
 
@@ -969,8 +738,8 @@ loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print_mdl
   return(list(sumloss,lvec))
 }
 
-test = loss_calc(pc_df[,1], pc_df[,-1], orig = 757, end = 1007, m = 1, p= 1, 0.01, mod_di = 1, ar_tf = 1)
-test
+# test = loss_calc(pc_df[,1], pc_df[,-1], orig = 757, end = 1007, m = 1, p= 1, 0.01, mod_di = 1, ar_tf = 1)
+# test
 
 ```
 
@@ -1137,6 +906,48 @@ gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
 # blah = list()
 ```
 
+```{r}
+# pc_df
+# tail(pc_df)
+out = gen_uv_test(df = pc_df, nfcst = 3, tau = 0.01, no_run = c(0,0,0,0))
+tail(out[[1]])
+```
+
+```{r}
+# Problem solving on 4.17.2020
+# caviarOptim(input_data[range_data,2])
+# sum(is.na(pc_df[,1])) - No NA values
+
+m1 = rolling_predictions(pc_df[,1], range_data = (1:nrow(pc_df)), nfcst = 3, model = 2, G = 10, col = 1)
+# nrow(pc_df)
+tail(m1)
+
+# No such luck. Let's dive deeper.
+rng = (1:(nrow(pc_df)-1))
+m1_1 = caviarOptim(pc_df[rng,1])
+m1_1
+
+# Let's see if it works for even a different column
+m1_dc = rolling_predictions(pc_df[,2], range_data = (1:nrow(pc_df)), nfcst = 3, model = 2, G = 10, col = 1)
+# nrow(pc_df)
+tail(m1_dc)
+
+# rolling_predictions = function(input_data, range_data = (2:dim(input_data)[1]), nfcst = 250, model =1, level = 0.01, G = 5, col = 2){
+#   # Run the varpredict function
+#   varpredict <- rollapplyr(input_data[range_data,col], length(range_data) - nfcst, caviarOptim, model, level, predict = 1, k = G) %>% lag
+#   # Eliminate NAs
+#   # pred_no_na = na.omit(varpredict)
+#   # Return the data
+#   # return(pred_no_na)
+#   return(varpredict)
+# }
+
+# It looks like there was an issue with the working directory link
+
+```
+
+
+
 ## MV Caviar - Plotting function
 
 ```{r}
@@ -1149,20 +960,24 @@ gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
 #' @export - a plot of the data by diffusion index number
 #'
 #' @examples = plt_data(plot_mtx[[1]]), abc = plt_data(plot_mat, tau = 0.01)
-plt_data = function(plot_matrix, tau){
+plt_data = function(plot_matrix, tau, resp_var, ntest){
   # Establish a maximum and minimum value
   max_val = max(plot_matrix[,1:ncol(plot_matrix)])
   min_val = min(plot_matrix[,1:ncol(plot_matrix)])
+  # Calculate inital and ending time value
+  start = index(plot_matrix)[1]
+  end = index(plot_matrix)[nrow(plot_matrix)]
+  ind_vals = index(plot_matrix) - start
   # Create an initial plot and add lines
     for (i in 1:ncol(plot_matrix)){
       if (i == 1){
         # 4/2/2020 - fixing the index
-        plot.ts(index(plot_matrix),plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
+        plot.ts(ind_vals,plot_matrix[,i], type = "l", xlab = paste("Days Since", as.Date(start)), ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = paste("Predicting", resp_var, "Returns from", as.Date(start), "to", as.Date(end)), sub = paste("The VaR Level is ", 100*tau, "%", "; There are ", ntest, " Trading Days Plotted Above", sep = ""))
         # plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
     } else if(i %in% seq(2,8,1)) {
-        lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
+        lines(ind_vals,plot_matrix[,i], col = i-1, lty = 2)
     } else {
-        lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2, lwd = 2)
+        lines(ind_vals,plot_matrix[,i], col = i-1, lty = 2, lwd = 2)
     }
     }
   # Define a sequence for plotting
@@ -1171,6 +986,7 @@ plt_data = function(plot_matrix, tau){
   # Add a line for 0
   # abline(h = 0, col = "black", lty = 2)
 }
+
 
 ```
 
@@ -1301,9 +1117,9 @@ pretty_tables = function(data_mat, loss_list, tau){
 #' @export - a plot and a table
 #'
 #' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0){
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1){
   # Select data parameters, pull the data, and percent change the data
-  df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date)
+  df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date, lag_pred = lag_pred)
   # Take the percent change of the data
   pc_df = pc_diff_index(df)
   # Extract the legnth of the data frame
@@ -1328,7 +1144,9 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
     # Print a warning
     print("WARNING: Not supplying an input data frame will require this function to run for a significant amount of time (1hr+)")
     # Call the function
-    uv_list = gen_uv_test(pc_df, ntest, tau, no_run = no_run)
+    # gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
+    print(head(pc_df))
+    uv_list = gen_uv_test(df = pc_df, nfcst = ntest, tau = tau, no_run = no_run)
   }
   # Incorporate the rolling predictions function results here
   plot_mat = cbind(pc_df[(test_orig+1):nrow(pc_df),1], mv_fcst$yhat[1:ntest], mv_fcst_art1$yhat[1:ntest], mv_fcst_art2$yhat[1:ntest], mv_fcst_art3$yhat[1:ntest], uv_list[[1]][(test_orig+1):test_end]*(-1), uv_list[[2]][(test_orig+1):test_end]*(-1), uv_list[[3]][(test_orig+1):test_end]*(-1), uv_list[[4]][(test_orig+1):test_end]*(-1))
@@ -1350,7 +1168,7 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   # Add descriptive titles onto the plot_mat
   colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
-  plot = plt_data(plot_mat, tau = tau)
+  plot = plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
   # Calculate losses
   l_list = gen_loss_test(plot_mat, tau = tau)
   # Put into tables
@@ -1365,36 +1183,15 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
 ```{r}
 var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 3, low_m = 1, high_m = 5, low_p = 1, high_p = 10, tau = 0.01, print_mp = 1)
 # tail(var_1pc_2008_sm)
+# plt_data(var_1pc_2008_sm[[1]], tau = 0.01, resp_var = "PG", ntest = 3)
+# init = index(var_1pc_2008_sm[[1]])[1]C
+# index(var_1pc_2008_sm[[1]]) - init +1
+# var_1pc_2008_sm
 
-var_1pc_2008_sm
+
 ```
 
-```{r}
-# Let's fit the plot matrix - 4/2/20
-plot_matrix = var_1pc_2008_sm[[1]]
-tau = 0.01
 
-plot.ts(plot_matrix[,1])
-
-# Establish a maximum and minimum value
-max_val = max(plot_matrix[,1:ncol(plot_matrix)])
-min_val = min(plot_matrix[,1:ncol(plot_matrix)])
-# Create an initial plot and add lines
-  for (i in 1:ncol(plot_matrix)){
-    if (i == 1){
-      plot.ts(plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
-  } else if(i %in% seq(2,8,1)) {
-      lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
-  } else {
-      lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2, lwd = 2)
-  }
-  }
-# Define a sequence for plotting
-plot_seq = seq(1, ncol(plot_matrix))
-legend("topleft", legend = c(colnames(plot_matrix)), col = plot_seq, lty = c(1, rep(2, 7), rep(3, ifelse(ncol(plot_matrix)-8 <= 0, 0, ncol(plot_matrix)-8))), lwd = c(1, rep(1, 7), rep(2, ifelse(ncol(plot_matrix)-8 <= 0, 0, ncol(plot_matrix)-8))))
-# Add a line for 0
-# abline(h = 0, col = "black", lty = 2)
-```
 
 # Test runs
 
@@ -1404,15 +1201,20 @@ Today, I'm just going to kick off the 1% run and analyze it.
 ```{r}
 # var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
 var_1pc_2008_mp = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
+var_5pc_2008_mp = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
 # var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
 # var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
 # var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
 
-plt_data(var_1pc_2008_mp[[1]], tau = 0.01)
-var_1pc_2008_mp[[4]]
+# plt_data(var_1pc_2008_mp[[1]], tau = 0.01, resp_var = "SPY", ntest = 250)
+# var_1pc_2008_mp[[4]]
 
 
 
+```
+
+```{r}
+var_1pc_2008_mp[[3]]
 ```
 
 
@@ -2148,6 +1950,32 @@ To test this function, we're going to combine all the univariate CAViaR parts in
 uv_cav_list = list(uvcav_1, uvcav_2, uvcav_3, uvcav_4)
 ```
 
+```{r}
+# Let's fit the plot matrix - 4/2/20
+plot_matrix = var_1pc_2008_sm[[1]]
+tau = 0.01
+
+plot.ts(plot_matrix[,1])
+
+# Establish a maximum and minimum value
+max_val = max(plot_matrix[,1:ncol(plot_matrix)])
+min_val = min(plot_matrix[,1:ncol(plot_matrix)])
+# Create an initial plot and add lines
+  for (i in 1:ncol(plot_matrix)){
+    if (i == 1){
+      plot.ts(plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
+  } else if(i %in% seq(2,8,1)) {
+      lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2)
+  } else {
+      lines(index(plot_matrix),plot_matrix[,i], col = i-1, lty = 2, lwd = 2)
+  }
+  }
+# Define a sequence for plotting
+plot_seq = seq(1, ncol(plot_matrix))
+legend("topleft", legend = c(colnames(plot_matrix)), col = plot_seq, lty = c(1, rep(2, 7), rep(3, ifelse(ncol(plot_matrix)-8 <= 0, 0, ncol(plot_matrix)-8))), lwd = c(1, rep(1, 7), rep(2, ifelse(ncol(plot_matrix)-8 <= 0, 0, ncol(plot_matrix)-8))))
+# Add a line for 0
+# abline(h = 0, col = "black", lty = 2)
+```
 
 ```{r}
 # function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), val_orig, val_end, test_orig, tau, low_m = 1, high_m, uv_list){
@@ -2161,4 +1989,254 @@ head(big_test_mod[[1]])
 big_test_mod[[4]]
 big_test[[4]]
 # diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31")
+```
+
+
+## Simulation Studies
+
+```{r}
+# Low to high volatility series
+lth_series = stock_simul(500, 25, 0.001, -0.005, 0.001, 0.01)
+mth_series = stock_simul(500, 25, 0.001, -0.005, 0.005, 0.01)
+hth_series = stock_simul(500, 25,  0.001, -0.005, 0.01, 0.01)
+```
+
+
+```{r}
+# Plot the data
+plot(lth_series, type = "l", ylim = c(0.8, 1.8), xlab = "Days", ylab = "Growth (Indexed to 1)", main = "Growth Comparison of 3 Simulated Stocks")
+lines(mth_series, type = "l", col = "red")
+lines(hth_series, type = "l", col = "blue")
+legend("bottomright", legend=c("Low Vol. Stock", "Mid Vol. Stock", "High Vol. Stock"),col=c("black", "red", "blue"), lty = c(1,1,1))
+
+# Transform the data to be differenced log data
+dl_lth <- diff(log(lth_series))
+dl_mth <- diff(log(mth_series))
+dl_hth <- diff(log(hth_series))
+
+
+
+# Plot the differenced data
+plot(dl_lth, type = "l", xlab = "Days", ylab = "Differenced Log Growth", ylim = c(-0.04, 0.04), main = "Log  Growth Rate Comparisons of 3 Simulated Stocks")
+lines(dl_mth, type = "l", col = "red")
+lines(dl_hth, type = "l", col = "blue")
+legend("bottomright", legend=c("Low Vol. Stock", "Mid Vol. Stock", "High Vol. Stock"),col=c("black", "red", "blue"), lty = c(1,1,1))
+```
+
+
+```{r}
+# Let's test the series
+m1_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 1, G = 10, col = 1)
+m2_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 2, G = 10, col = 1)
+m3_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 3, G = 10, col = 1)
+m4_lth = rolling_predictions(dl_lth, range_data = (1:length(dl_lth)), nfcst = 25, model = 4, G = 10, col = 1)
+
+# Let's test the series
+m1_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 1, G = 10, col = 1)
+m2_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 2, G = 10, col = 1)
+m3_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 3, G = 10, col = 1)
+m4_mth = rolling_predictions(dl_mth, range_data = (1:length(dl_mth)), nfcst = 25, model = 4, G = 10, col = 1)
+
+# Let's test the series
+m1_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 1, G = 10, col = 1)
+m2_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 2, G = 10, col = 1)
+m3_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 3, G = 10, col = 1)
+m4_hth = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 25, model = 4, G = 10, col = 1)
+```
+
+```{r}
+
+```
+
+```{r}
+# First plot - LTH VaR
+plot(dl_lth[500:524], type = "l", ylim = c(-0.04, 0.04), xlab = "Forecast Day", ylab = "Log Return", main = "VaR Forecast in High-Volatility Environment for a Low-Vol. Stock")
+legend("topright", legend=c("Simulated Return", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"),col=c("black", "red", "green", "blue", "purple"), lty = c(1,2,2,2,2))
+lines(m1_lth[2:26]*(-1), col = "red", lty = 2)
+lines(m2_lth[2:26]*(-1), col = "green", lty = 2)
+lines(m3_lth[2:26]*(-1), col = "blue", lty = 2)
+lines(m4_lth[2:26]*(-1), col = "purple", lty = 2)
+
+# Second plot - MTH VaR
+plot(dl_mth[500:524], type = "l", ylim = c(-0.04, 0.04), xlab = "Forecast Day", ylab = "Log Return", main = "VaR Forecast in High-Volatility Environment for a Mid-Vol. Stock")
+legend("topright", legend=c("Simulated Return", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"),col=c("black", "red", "green", "blue", "purple"), lty = c(1,2,2,2,2))
+lines(m1_mth[2:26]*(-1), col = "red", lty = 2)
+lines(m2_mth[2:26]*(-1), col = "green", lty = 2)
+lines(m3_mth[2:26]*(-1), col = "blue", lty = 2)
+lines(m4_mth[2:26]*(-1), col = "purple", lty = 2)
+
+# Second plot - HTH VaR
+plot(dl_hth[500:524], type = "l", ylim = c(-0.04, 0.04), xlab = "Forecast Day", ylab = "Log Return", main = "VaR Forecast in High-Volatility Environment for a Low-Vol. Stock")
+legend("topright", legend=c("Simulated Return", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"),col=c("black", "red", "green", "blue", "purple"), lty = c(1,2,2,2,2))
+lines(m1_hth[2:26]*(-1), col = "red", lty = 2)
+lines(m2_hth[2:26]*(-1), col = "green", lty = 2)
+lines(m3_hth[2:26]*(-1), col = "blue", lty = 2)
+lines(m4_hth[2:26]*(-1), col = "purple", lty = 2)
+
+```
+
+That doesn't look promising. What if we just look at the last 10?
+
+```{r}
+# Let's test the series
+m1_hth_sm = rolling_predictions(dl_hth, range_data = (1:length(dl_hth)), nfcst = 10, model = 1, G = 10, col = 1)
+```
+
+```{r}
+plot(dl_hth[515:524], type = "l", ylim = c(-0.04, 0.04))
+lines(m1_hth_sm[1:10], col = "red")
+```
+
+Not good. Let's look at an in-sample test.
+
+```{r}
+# Let's test the series in sample
+m1_hth_sm_is_05 = rolling_predictions(dl_hth, range_data = (1:400), nfcst = 10, model = 1, level = 0.05, G = 10, col = 1)
+m1_hth_sm_is_01 = rolling_predictions(dl_hth, range_data = (1:400), nfcst = 10, model = 1, level = 0.01, G = 10, col = 1)
+
+
+```
+
+```{r}
+plot(dl_hth[390:399], type = "l", ylim = c(-0.04, 0.04))
+lines(m1_hth_sm_is_05[1:10], col = "red")
+lines(m1_hth_sm_is_01[1:10], col = "green")
+```
+
+```{r}
+# We may need to expand this to other areas. Ask Wei Biao for simulation advice.
+```
+
+## Multivariate Simulation Study
+
+Real data is messy, but simulation could give us some idea of whether combining all the stocks into a pool could give a lift.
+
+```{r}
+#' Stock simulation for use in CAViaR simulation study
+#'
+#' @param n1 - number of data points in first series
+#' @param n2 - number of data points in second series
+#' @param s1_sd - standard deviation of first series
+#' @param s2_sd - standard deviation of second series 
+#' @param s1_mean - mean of first series 
+#' @param s2_mean - mean of second series 
+#' @param rseed - random seed for reproducibility
+#'
+#' @return - output time series
+#' @export
+#'
+#' @examples hth_series = stock_simul(100, 25, 10, 10)
+stock_simul = function(n1, n2,s1_gr, s2_gr, s1_sd, s2_sd, rseed = 1234){
+  # Set random seed
+  set.seed(rseed)
+  # Initialize vector and put first value in the series
+  s1 <- rep(1, n1)
+  # Simulate first series
+  for (i in 2:n1){
+    s1[i] <- s1[i-1]*(1+s1_gr) + rnorm(1, mean = 0, sd = s1_sd)
+  }
+  # Initialize vector
+  s2 <- rep(1, n2)
+  # Put first value in
+  s2[1] <- s1[n1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
+  # Simulate second series
+  for (i in 2:n2){
+    s2[i] <- s2[i-1]*(1+s2_gr) + rnorm(1, mean = 0, sd = s2_sd)
+  }
+  # Combine the two series
+  long <- as.matrix(c(s1, s2))
+  # Export the data
+  return(long)
+}
+
+# test <- lth_series[500,1]*(1)
+
+```
+
+
+
+
+
+
+```{r}
+#' Stock data generator for use in CAViaR simulation study
+#' For maximum flexibility, this will only generate one series with one variance and growth rate.
+#' Note that for simplicity, this is modeling the percentage change
+#' 
+#' @param t - number of time data points
+#' @param mu - the mean return in a given day
+#' @param sigma - the standard deviation
+#' @param rseed - random seed for reproducibility. Default is NULL
+#'
+#' @return - output percentage changes of a stock
+#' @export
+#'
+#' @examples dat_gen(1000, 0.001, 0.1)
+dat_gen = function(t, mu, sigma, rseed = NULL){
+  # Have an option for with and without random seed
+  if (is.null(rseed) == TRUE){
+    dat = rnorm(t, mu, sigma)
+  }
+  else {
+    set.seed(rseed)
+    dat = rnorm(t, mu, sigma)
+  }
+  return(dat)
+}
+
+# mean(dat_gen(1000, 0.001, 0.1))
+
+```
+
+```{r}
+# Generalize the above vector to look at many different periods
+
+
+```
+
+# Combining a Diffusion Index Model with the Quantile Regression Model
+
+```{r}
+# Below is code that pulls real data for analysis
+```
+
+
+Response is IBM, pick 5 stocks for predictors.
+
+```{r}
+# Pull IBM
+ibm = data_pull("IBM", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# Pull 10 stocks at random that existed in the DJIA over the timeframe
+# Exxon
+xom = data_pull("XOM", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# PG
+pg = data_pull("PG", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# General Electric
+ge = data_pull("GE", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# 3M
+mmm = data_pull("MMM", start_date = "1986-04-06", end_date = "1999-04-08")
+
+# Disney
+dis = data_pull("DIS", start_date = "1986-04-06", end_date = "1999-04-08")
+
+```
+
+There is probably some work to be done with choosing these stocks. I only picked ones with data.
+
+```{r}
+# Plot the data
+# plot.xts(ibm[,2])
+
+```
+
+Let's just see if there is any merit to just regressing one set of stocks on another.
+
+```{r}
+# Predictors
+# ?SWfore
+SWfore
 ```
