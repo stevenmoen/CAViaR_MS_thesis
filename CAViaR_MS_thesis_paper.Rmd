@@ -1214,7 +1214,7 @@ var_5pc_2008_mp = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG"
 ```
 
 ```{r}
-var_1pc_2008_mp[[3]]
+var_5pc_2008_mp
 ```
 
 
