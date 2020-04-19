@@ -1214,72 +1214,64 @@ var_5pc_2008_mp = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG"
 ```
 
 ```{r}
-var_5pc_2008_mp
+
+plt_data(var_5pc_2008_mp[[1]], 0.05, "PG", 250)
 ```
 
+# Sector ETFs as Explanatory Variables
+
+Here's what I'm thinking.
+
+Lowest level: 1%, 5%, 10% VaR
+Next, 2008, 2010, 2014, or 2016
+Highest - ETF choices
+3 x 4 x 4 = 48 runs
+
+## 2008 Ending
 
 ```{r}
-# Write a function to fix the NAs and output a plot and the table
-fix_na <- function(input_df, tau){
-  # Copy the data frame
-  int_df <- input_df
-  # Count the NAs and print a warning
-  # paste("Window Size is",  floor(win_size), sep=" "), 
-  print(paste("NOTE: There are ", sum(is.na(int_df)), " NA(s) in the dataset", sep = ""))
-  # Fix the NAs
-  for (i in 1:ncol(int_df)){
-    # Interpolate the data
-    int_df[,i] <- na.approx(int_df[,i])
-  }
-  # Plot everything
-  plot = plt_data(int_df)
-  # Calculate losses
-  l_list = gen_loss_test(int_df, tau = tau)
-  # Put into tables
-  tables = pretty_tables(int_df, l_list)
-  # Print the tables and the plot
-  print(plot)
-  print(tables)
-  return(list(int_df, plot, l_list, tables))
-}
-
+# 1%, 5%, 10% VaR - 2008 - 1st set of predictors
+var_1pc_2008_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
+var_5pc_2008_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
+var_10pc_2008_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
 ```
 
 ```{r}
-# var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
-# var_1pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
-# var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
-# var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
-# var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
+# Export the data as CSVs
+write.csv(var_1pc_2008_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2008_usetf.csv", row.names = TRUE)
+write.csv(var_5pc_2008_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_5pc_2008_usetf.csv", row.names = TRUE)
+write.csv(var_10pc_2008_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_10pc_2008_usetf.csv", row.names = TRUE)
 
-# Call the function multiple times
-fix_0005 = fix_na(var_0_05_pc_2008[[1]], tau = 0.005)
-fix_001 = fix_na(var_1pc_2008[[1]], tau = 0.01)
-fix_005 = fix_na(var_5pc_2008[[1]], tau = 0.05)
-fix_010 = fix_na(var_10pc_2008[[1]], tau = 0.10)
-fix_020 = fix_na(var_20pc_2008[[1]], tau = 0.20)
+
 ```
 
-# Test the quiet portion
+
+## 2010 Ending Year
 
 ```{r}
-var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 2, low_m = 1, high_m = 5, tau = 0.01)
+# 1%, 5%, 10% VaR - 2010 - 1st set of predictors
+var_1pc_2010_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
+var_5pc_2010_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
+var_10pc_2010_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
 ```
 
-# Fixing the plot function
+## 2014 Ending Year
 
 ```{r}
-# The problem description is that we're seeing odd things on the plot. I want to see if 
-# extracting the date object and formatting it properly might help.
-
-# date(var_20pc_2008[[1]])
-
-# I will wait until I have an internet connection
+# 1%, 5%, 10% VaR - 2014 - 1st set of predictors
+var_1pc_2014_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
+var_5pc_2014_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
+var_10pc_2014_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
 ```
 
+## 2016 Ending Year
 
-# Stock simulation
-
+```{r}
+# 1%, 5%, 10% VaR - 2016 - 1st set of predictors
+var_1pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
+var_5pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
+var_10pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
+```
 
 ##### JUNK CODE ########
 
@@ -2240,3 +2232,65 @@ Let's just see if there is any merit to just regressing one set of stocks on ano
 # ?SWfore
 SWfore
 ```
+
+```{r}
+# Write a function to fix the NAs and output a plot and the table
+fix_na <- function(input_df, tau){
+  # Copy the data frame
+  int_df <- input_df
+  # Count the NAs and print a warning
+  # paste("Window Size is",  floor(win_size), sep=" "), 
+  print(paste("NOTE: There are ", sum(is.na(int_df)), " NA(s) in the dataset", sep = ""))
+  # Fix the NAs
+  for (i in 1:ncol(int_df)){
+    # Interpolate the data
+    int_df[,i] <- na.approx(int_df[,i])
+  }
+  # Plot everything
+  plot = plt_data(int_df)
+  # Calculate losses
+  l_list = gen_loss_test(int_df, tau = tau)
+  # Put into tables
+  tables = pretty_tables(int_df, l_list)
+  # Print the tables and the plot
+  print(plot)
+  print(tables)
+  return(list(int_df, plot, l_list, tables))
+}
+
+```
+
+```{r}
+# var_0_05_pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.005)
+# var_1pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01)
+# var_5pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.05)
+# var_10pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.10)
+# var_20pc_2008 = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.20)
+
+# Call the function multiple times
+fix_0005 = fix_na(var_0_05_pc_2008[[1]], tau = 0.005)
+fix_001 = fix_na(var_1pc_2008[[1]], tau = 0.01)
+fix_005 = fix_na(var_5pc_2008[[1]], tau = 0.05)
+fix_010 = fix_na(var_10pc_2008[[1]], tau = 0.10)
+fix_020 = fix_na(var_20pc_2008[[1]], tau = 0.20)
+```
+
+# Test the quiet portion
+
+```{r}
+var_1pc_2008_sm = cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 2, low_m = 1, high_m = 5, tau = 0.01)
+```
+
+# Fixing the plot function
+
+```{r}
+# The problem description is that we're seeing odd things on the plot. I want to see if 
+# extracting the date object and formatting it properly might help.
+
+# date(var_20pc_2008[[1]])
+
+# I will wait until I have an internet connection
+```
+
+
+# Stock simulation
