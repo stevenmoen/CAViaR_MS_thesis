@@ -657,7 +657,7 @@ Let's test to see if the new functions work.
 # var_1pc_ar3 = mod_di_wl(pc_df[,1], pc_df[,-1], 100, m = 2, 0.01, ar_tf = 3, print_mdl = 1, p =2)
 # var_1pc_ar3$name_vector
 
-?rq
+# ?rq
 ```
 
 Seems reasonable.
@@ -1249,24 +1249,43 @@ write.csv(var_10pc_2008_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS
 ## 2010 Ending Year
 
 ```{r}
+# 2010 Ending year 
 # 1%, 5%, 10% VaR - 2010 - 1st set of predictors
 var_1pc_2010_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
 var_5pc_2010_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
 var_10pc_2010_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
 ```
 
-## 2014 Ending Year
+```{r}
+# Export the data as CSVs
+write.csv(var_1pc_2010_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2010_usetf.csv", row.names = TRUE)
+write.csv(var_5pc_2010_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_5pc_2010_usetf.csv", row.names = TRUE)
+write.csv(var_10pc_2010_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_10pc_2010_usetf.csv", row.names = TRUE)
+
+
+```
 
 ```{r}
+## 2014 Ending Year
+
 # 1%, 5%, 10% VaR - 2014 - 1st set of predictors
 var_1pc_2014_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
 var_5pc_2014_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
 var_10pc_2014_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
 ```
 
-## 2016 Ending Year
+```{r}
+# Export the data as CSVs
+write.csv(var_1pc_2014_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2014_usetf.csv", row.names = TRUE)
+write.csv(var_5pc_2014_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_5pc_2014_usetf.csv", row.names = TRUE)
+write.csv(var_10pc_2014_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_10pc_2014_usetf.csv", row.names = TRUE)
+
+
+```
 
 ```{r}
+## 2016 Ending Year
+
 # 1%, 5%, 10% VaR - 2016 - 1st set of predictors
 var_1pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
 var_5pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
