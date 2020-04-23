@@ -337,6 +337,7 @@ pc_diff_index = function(diff_df){
 # Troubleshooting the data 
 df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", lag_pred = 1)
 pc_df = pc_diff_index(df)
+# head(pc_df)
 
 ```
 
@@ -762,7 +763,7 @@ loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print_mdl
 #' @export
 #'
 #' @examples - opt_m(pc_df[,1], pc_df[,-1], 757, 1027, 0.01, low_m =1, high_m  = 5)
-opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print_mdl = 0, model = 1){
+opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_tf = 1, p = 1, print_mdl = 0, model = 1, rowname = NULL){
   # Initialize a loss vector
   loss_vec = rep(0,high_m-low_m + 1)
   # Initialize an m vector
@@ -773,8 +774,20 @@ opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_
   }
   # Find the minimizer
   opt_m = which.min(loss_vec)
+  opt_p = NA
+  # Combine into a data frame
+  df = as.data.frame(cbind(opt_m, opt_p))
+  names(df) <- c("Optimal m", "Optimal p")
+  # Assign a rowname
+  if (is.null(rowname) == TRUE){
+    # Write the row names
+    rownames(df) <- c("MV CAViaR")
+  }
+  else {
+    rownames(df) <- rowname
+  }
   # Return the loss_vector and the minimzer
-  return(list(opt_m, loss_vec))
+  return(list(opt_m, loss_vec, df))
 }
 ```
 
@@ -793,7 +806,7 @@ opt_m = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, mod_di = 0, ar_
 #' @export
 #'
 #' @examples - opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
-opt_mp = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, low_p = 1, high_p, mod_di = 0, ar_tf = 1, print_mdl = 0, model = 1, print_mp = 0){
+opt_mp = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, low_p = 1, high_p, mod_di = 0, ar_tf = 1, print_mdl = 0, model = 1, print_mp = 0, rowname = NULL){
   # Initialize a loss matrix
   loss_mat = matrix(0, high_p-low_p + 1,high_m-low_m + 1)
   # Initialize a p vector
@@ -808,6 +821,24 @@ opt_mp = function(y, x, orig, end = NULL, tau, low_m = 1, high_m, low_p = 1, hig
   # Print the optimal p and optimal m
   df = as.data.frame(cbind(opt_m, opt_p))
   names(df) <- c("Optimal m", "Optimal p")
+  # Assign a rowname
+  if (is.null(rowname) == TRUE){
+    if (ar_tf == 1){
+      # Write the row names
+      rownames(df) <- c("MV CAViaR + AR")
+    } else if (ar_tf == 2){
+      # Write the row names
+      rownames(df) <- c("MV CAViaR + SAV")
+    } else if (ar_tf == 3){
+      # Write the row names
+      rownames(df) <- c("MV CAViaR + AS")
+    } else {
+      rownames(df) <- c("Unknown Model")
+    }
+  }
+  else {
+    rownames(df) <- rowname
+  }
   # Print the df if the option is turned on
   if (print_mp == 1){
     print(df)
@@ -848,7 +879,33 @@ opt_pm_m1 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 
 opt_pm_m2 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 2, mod_di = 1)
 opt_pm_m3 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = 757, end = 1007, tau = 0.01, low_m =1, high_m  = 5, low_p = 1, high_p = 10, ar_tf = 3, mod_di = 1)
 
-# opt_pm_m3[[3]]
+# Problem solving on 4/22/2020 - Appending these datasets to each other
+pm_pretty_df = rbind(opt_pred_nl[[3]], opt_pm_m1[[4]], opt_pm_m2[[4]], opt_pm_m3[[4]])
+pm_pretty_df
+```
+
+```{r}
+#' A function that combines optimal values of m and p into a final table
+#'
+#' @param m1 - the data frame from the "MV CAViaR" run
+#' @param m2 - the data frame from the "MV CAViaR + AR" run
+#' @param m3 - the data frame from the "MV CAViaR + SAV" run
+#' @param m4 - the data frame from the "MV CAViaR + AS" run
+#'
+#' @return - a nicely formatted table
+#' @export
+#'
+#' @examples - pretty_pm(opt_pred_nl[[3]], opt_pm_m1[[4]], opt_pm_m2[[4]], opt_pm_m3[[4]])
+pretty_pm = function(m1, m2, m3, m4){
+  # Merge the individual data frames
+  pm_pretty_df = rbind(m1, m2, m3, m4)
+  # Format nicely
+  pm_pretty_df %>% kable(caption = "Optimal Number of Diffusion Indices (m) and Lags (p) for Different Models", digits = 0) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = "The MV CAViaR model doesn't have an optimal value for p because there are no AR lags in the model"
+  )
+  
+}
+
+pretty_pm(opt_pred_nl[[3]], opt_pm_m1[[4]], opt_pm_m2[[4]], opt_pm_m3[[4]])
 ```
 
 
@@ -1071,20 +1128,29 @@ gen_loss_test = function(data_mat, tau){
 #' @param data_mat - input data matrix used in the calculation of losses
 #' @param loss_list - a list of the losses calculated from the CAViaR function
 #' @param tau - the risk level used
+#' @param ntest - the number of test points
 #'
 #' @return
 #' @export - returns a nicely formatted table
 #'
 #' @examples - pretty_tables(plot_mat, l_list, tau = 0.01)
-pretty_tables = function(data_mat, loss_list, tau){
+pretty_tables = function(data_mat, loss_list, tau, ntest){
   # Combine into a data frame
   df = as.data.frame(rbind(loss_list[[1]], loss_list[[2]]))
+  # Calculate inital and ending time value
+  start = index(data_mat)[1]
+  end = index(data_mat)[nrow(data_mat)]
   # Add row/column names
   colnames(df) <- colnames(data_mat[,-1])
   rownames(df) <- c("Losses", "VaR Breaks (%)")
   # Convert to a table
-  df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling()
+  df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
 }
+```
+
+```{r}
+# Problem solving on 4/22 - Check that the plot matrix works
+pretty_tables(var_1pc_2010_usetf[[1]], var_1pc_2010_usetf[[3]], 0.01, 250)
 ```
 
 
@@ -1117,7 +1183,7 @@ pretty_tables = function(data_mat, loss_list, tau){
 #' @export - a plot and a table
 #'
 #' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1){
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1, rowname = NULL){
   # Select data parameters, pull the data, and percent change the data
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date, lag_pred = lag_pred)
   # Take the percent change of the data
@@ -1129,10 +1195,10 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   val_end = test_orig
   val_orig = test_orig - nval
   # Test for the optimal number of parameters
-  opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m)
-  opt_pred_art1 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p,mod_di = 1, ar_tf = 1, print_mdl = print_mdl, print_mp = print_mp)
-  opt_pred_art2 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p,mod_di = 1, ar_tf = 2, print_mdl = print_mdl, print_mp = print_mp)
-  opt_pred_art3 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p, mod_di = 1, ar_tf = 3, print_mdl = print_mdl, print_mp = print_mp)
+  opt_pred_nl = opt_m(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, rowname = rowname)
+  opt_pred_art1 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p,mod_di = 1, ar_tf = 1, print_mdl = print_mdl, print_mp = print_mp, rowname = rowname)
+  opt_pred_art2 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p,mod_di = 1, ar_tf = 2, print_mdl = print_mdl, print_mp = print_mp, rowname = rowname)
+  opt_pred_art3 = opt_mp(y = pc_df[,1], x = pc_df[,-1], orig = val_orig, end = val_end, tau = tau, low_m = low_m, high_m = high_m, low_p = low_p, high_p = high_p, mod_di = 1, ar_tf = 3, print_mdl = print_mdl, print_mp = print_mp, rowname = rowname)
   # gen_uv_test(pc_df, 1, 0.05, no_run = c(1,1,0,1))
   # Use the above forecasts to input into the above
   mv_fcst = mod_di(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_nl[[1]], tau = tau, print_mdl = print_mdl)
@@ -1145,7 +1211,7 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
     print("WARNING: Not supplying an input data frame will require this function to run for a significant amount of time (1hr+)")
     # Call the function
     # gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
-    print(head(pc_df))
+    # print(head(pc_df))
     uv_list = gen_uv_test(df = pc_df, nfcst = ntest, tau = tau, no_run = no_run)
   }
   # Incorporate the rolling predictions function results here
@@ -1166,17 +1232,20 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   }
   # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE)
   # Add descriptive titles onto the plot_mat
-  colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR(1)", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+  colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
   plot = plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
   # Calculate losses
   l_list = gen_loss_test(plot_mat, tau = tau)
   # Put into tables
-  tables = pretty_tables(plot_mat, l_list, tau = tau)
+  tables = pretty_tables(plot_mat, l_list, tau = tau, ntest = ntest)
+  # Run the function for optimal p and m
+  pm_table = pretty_pm(opt_pred_nl[[3]], opt_pred_art1[[4]], opt_pred_art2[[4]], opt_pred_art3[[4]])
   # Print the tables and the plot
   print(plot)
   print(tables)
-  return(list(plot_mat, plot, l_list, tables, plot_mat_na))
+  print(pm_table)
+  return(list(plot_mat, plot, l_list, tables, plot_mat_na, pm_table))
 }
 ```
 
@@ -1246,6 +1315,8 @@ write.csv(var_10pc_2008_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS
 ```
 
 
+
+
 ## 2010 Ending Year
 
 ```{r}
@@ -1290,6 +1361,38 @@ write.csv(var_10pc_2014_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS
 var_1pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.01, print_mdl = 1, print_mp = 1)
 var_5pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1)
 var_10pc_2016_usetf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1)
+```
+
+```{r}
+# Export the data as CSVs
+write.csv(var_1pc_2016_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2016_usetf.csv", row.names = TRUE)
+write.csv(var_5pc_2016_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_5pc_2016_usetf.csv", row.names = TRUE)
+write.csv(var_10pc_2016_usetf[[1]],"/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_10pc_2016_usetf.csv", row.names = TRUE)
+```
+
+## Export the tables
+
+
+```{r}
+# Export the tables - 2008
+var_1pc_2008_usetf[[4]]
+var_5pc_2008_usetf[[4]]
+var_10pc_2008_usetf[[4]]
+
+# 2010
+var_1pc_2010_usetf[[4]]
+var_5pc_2010_usetf[[4]]
+var_10pc_2010_usetf[[4]]
+
+# 2014
+var_1pc_2014_usetf[[4]]
+var_5pc_2014_usetf[[4]]
+var_10pc_2014_usetf[[4]]
+
+# 2016
+var_1pc_2016_usetf[[4]]
+var_5pc_2016_usetf[[4]]
+var_10pc_2016_usetf[[4]]
 ```
 
 ##### JUNK CODE ########
