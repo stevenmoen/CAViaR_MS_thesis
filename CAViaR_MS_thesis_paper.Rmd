@@ -337,7 +337,7 @@ pc_diff_index = function(diff_df){
 # Troubleshooting the data 
 df = diff_index_df(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", lag_pred = 1)
 pc_df = pc_diff_index(df)
-# head(pc_df)
+# tail(pc_df)
 
 ```
 
