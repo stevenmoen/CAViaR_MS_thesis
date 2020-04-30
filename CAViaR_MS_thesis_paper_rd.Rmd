@@ -1093,7 +1093,8 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   }
   # model type (1 - SAV, 2 - AS, 3 - GARCH, 4 - ADAPTIVE)
   # Add descriptive titles onto the plot_mat
-  colnames(plot_mat) <- c("PG", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+  colnames(plot_mat) <- c(resp_var, "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
+  # colnames(plot_mat) <- c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")
   # Plot everything
   plot = plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
   # Calculate losses
@@ -1150,7 +1151,7 @@ abc$Index = as.Date(abc$Index)
 # index_t
 # head(abc)
 abc_x = xts(abc[,-1], order.by = abc[,1])
-head(abc_x)
+# head(abc_x)
 ```
 
 ```{r}
@@ -1167,7 +1168,8 @@ head(abc_x)
 #' @export - a plot and tables
 #'
 #' @examples - test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
-var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")){
+var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8")){
+# var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")){
   # Import data
   plot_mat = read.csv(paste0(file_path,filename), sep = ",", header = T, stringsAsFactors = FALSE)
   # Fix date format
@@ -1192,7 +1194,19 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
 ```
 
 ```{r}
-test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
+# test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
+```
+
+# Problem Solving on 4.29.2020
+
+```{r}
+# Create a fake data frame, and assign silly numbers
+df_FAKE = as.data.frame(cbind(1,2,3,4))
+rownames(df_FAKE) <- c("Numbers")
+colnames(df_FAKE) <- c("One", "Two", "Three", "Four")
+df_FAKE %>% kable(caption = "Fake Data", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", 4, "fake data points"))
+
+# df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
 ```
 
 
@@ -1201,10 +1215,16 @@ test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_
 ### U.S. ETFs
 
 ```{r}
+# return(list(plot_mat, plot, l_list, tables))
+
 # Call the above function
 v1_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
+pretty_tables(v1_2008_usetf[[1]], v1_2008_usetf[[3]], tau = 0.01, ntest = 250)
 v5_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2008_us_etf.csv", 0.05)
 v10_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2008_us_etf.csv", 0.10)
+
+# head(v10_2008_usetf[[1]])
+v10_2008_usetf
 ```
 
 ```{r}
