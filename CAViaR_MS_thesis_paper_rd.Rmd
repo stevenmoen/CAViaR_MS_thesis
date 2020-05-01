@@ -1,7 +1,8 @@
 ---
-title: "M.S. Thesis - First Draft"
+title: "Multivariate CAViaR"
+subtitle: "A New Approach to Risk Modeling"
 author: "Steven Moen"
-date: "Friday, January 24th, 2020"
+date: "Thursday, April 30th, 2020"
 output:
   pdf_document: default
   html_notebook: default
@@ -12,21 +13,65 @@ knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
                       echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
 ```
 
+# Abstract
+
+This paper builds upon previous literature for modeling value-at-risk quantiles that uses an ARMA-style approach by adding ETFs as explanatory variables that are combined into principal component vectors at the forecast origin. By combining these principal component vectors along with various transformations of lagged autoregressive response variables, similar predictive accuracy is achieved (relative to the univariate model) and a clearer interpretation is gained. In fact, this thesis proposes an algorithm to detect changepoints in the explanatory variables that could be used as a means to measure changepoints in the economy. [DELETE IF THE CHANGEPOINT ARGUMENT DOESN'T MAKE SENSE.]
+
 # Background and Introduction
 
-Value-at-risk modeling, or VaR, is a commonly used tool to measure riskiness in a financial institution. CAViaR was a new take on risk modeling originally proposed by Robert Engle and Simone Manganelli in 2004 which builds upon the literature of modeling regression quantiles in settings which are essential. 
+When modeling financial time series, simply considering the mean and the variance is insufficient. In fact, modeling a 1% or a 5% quantile of daily returns is a way to understand what happens on the worst days and to have a clearer picture of what might happen during a downturn. Indeed, finance theory suggests that the reasons why stocks earn a x% real return (CITE) after taxes and inflation over very long periods of time is because of the fact that there might be a significant downturn in asset prices. 
 
-and agree with the basic premise of the CAViaR paper that many of the nonparametric historical simulation methods don’t have attractive statistical properties and are chosen more for experimental qualities (an example of this in the 1998 paper by Boudoukh, Richardson, and Whitelaw cited by Engle which uses a semiparametric "hybrid" approach)
-I think trying to think too narrowly about VaR isn't a very interesting statistical problem - in a sense, VaR is just a useful summarization of quantile risk put into dollar figures for easy consumption
-In my opinion, the most interesting question in the CAViaR paper isn’t VaR per se, it’s testing their theorems under relaxations of their assumptions to better understand their approach to extreme value theory. In particular, the following analyses catch my eye:
-How important is the assumption C2 on page 374 of the CAVIAR paper (which underlies Theorem 1 about the consistency of the estimator beta hat)? It states that "conditional on all of the past information...the error terms form a stationary process". It may be an interesting test to see how much nonstationarity affects the consistency of the estimator beta hat. I could do this via simulation and see if there's a lot of value here, which may lead us to a more fundamental result.
-In my opinion, theorems 4 and 5 (p. 371) are the most important in the paper because they state that the DQ_IS and DQ_OOS quantities are pivotals asymptotically. But it begs the question of how much does that matter, especially in the context of VaR, which in all likelihood is working with limited data? Therefore, it seems to me that the DQ8 and DQ9 assumptions are the shakiest assumptions required for theorem 5. It might be interesting to see how far off from a chi-squared distribution real-world data actually is. This may allow us to develop "rules of thumb" about the accuracy of these asymptotic distributions.
+One way to understand downside risk is using value-at-risk (VaR); a one-day 1% VaR of -1 million dollars for a portfolio means that the portfolio will lose at least $1 million on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies (CITE?).
+
+Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation1. According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory”2. As such, they propose a framework called CAViaR that forecasts the VaR quantile directly using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions3,4.
+
+My analysis of this model shows that it performed well on the test sample – the last 200 trading days of 2008 – for a stock like Amazon that was highly volatile during the training sample, which included data from previous years. However, the forecast performs poorly for a stock like Proctor & Gamble (PG) that was less volatile during the training sample. Both stocks were highly volatile during the late stages of 2008, but because of the non-representative training sample for PG, the model significantly underestimated the riskiness of PG. Therefore, I propose developing a model that combines stocks into a multivariate setting to capture correlations to improve forecast accuracy. I want to extend a diffusion index model, originally developed by Stock and Watson for predicting conditional means, to the domain of a quantile regression to forecast VaR5,6. Initial work that I have done shows the diffusion index model is useful in predicting the mean returns of the SPY using U.S. sector ETFs as predictors. For this reason, I suspect that using portfolio components in the same fashion to predict a specific quantile will be useful as well, and I plan to develop theoretical guarantees about the distribution of parameters in this setting. I hope to conclude this work within my first year in the Ph.D. program.
+
+
 
 # Methods Used
 
 Fill in.
 
 # Data Used
+
+The response variable used in this analysis is SPY, which is an exchange-traded fund that aims to track the performance of the 500 largest market-capitalization stocks in the United States (CITE). It is broadly used as a bellweather of the U.S. economy (CITE), and has the advantage of avoiding survivorship bias - while an individual stock might go bankrupt or merge with another, it's reasonable to assume that these issues do not apply with an ETF. 
+
+Following this logic, there are several classes of response variables used in this analysis. The first group is a set of U.S. sector ETFs obtained from Seeking Alpha using the link below. As with the response variable, these ETFs were publicly traded throughout the Great Recesssion.
+
+https://seekingalpha.com/etfs-and-funds/etf-tables/sectors
+
+a. Utilities (XLU)
+b. Consumer Staples (XLP)
+c. Healthcare (XLV)
+d. Technology (XLK)
+e. Consumer Discretionary (XLY)
+f. Industrial (XLI)
+g. Financial Services (XLF)
+h. Basic Materials (XLB)
+i. Energy (XLE)
+
+The second is Global Sector ETFs, also obtained from Seeking Alpha. The rationale for including these is that perhaps some global exposure is useful in understanding the broader market.
+
+a. Utilities (JXI)
+b. Consumer Staples (KXI)
+c. Healthcare (IXJ)
+d. Telecommunications (IXP)
+e. Technology (IXN)
+f. Consumer Discretionary (RXI)
+g. Industrial (EXI)
+h. Financial Services (IXG)
+i. Basic Materials (MXI)
+j. Energy (IXC)
+
+The third is bond ETFs, also obtained from [CITE]. Like the previous two, these ETFs potentially contain forward-looking information about the stock market. Link below:
+
+a. iShares 1-3 Year Treasury Bond Fund (SHY)
+b. iShares 7-10 Year Treasury Bond Fund (IEF)
+c. iShares 20+ Year Treasury Bond Fund (TLT)
+d. iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
+
+Lastly, all of the above are run together.
 
 # Results
 
@@ -49,6 +94,7 @@ library(formattable)
 library(quantreg)
 library(MTS)
 library(plot3D)
+library(citr)
 
 # Set up working directory
 # setwd("~/Documents/GitHub/CaviaR")
@@ -1579,12 +1625,20 @@ v10_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_t
 # var_10pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2016_all_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
 ```
 
-# JUNK CODE
+# Conclusions and Future Work
 
-Problem solving on 4.25.2020 to see why commodities ETFs code had a problem.
+The problem of how to predict a low quantile of a stock's log return when the training sample is substantially different than the test scenario is an enormously difficult problem. Almost axiomatically, the distribution is nonstationary over time. How is it possible to predict the return of an index like the S&P500 during a period of market turmoil such as the great recession? While the CAViaR model performs comparatively well during times of stress, it performs about the same as the multivariate model during more benign economic periods.
 
-```{r}
-# comm_df = diff_index_df(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", lag_pred = 1)
-# head(comm_df)
-# pc_df = pc_diff_index(df)
+This conclusion drawn from the above results might support the notion of combining the two models in some sort of a mixture model - aiming to use the basket of ETFs during good times, and use the CAViaR ARMA specification during bad times. The approach of using ETFs allows a prediction based on forward-looking expectations of fundamental factors. Indeed, ETFs are just baskets of individual stocks or bonds, and those securities are (in theory) based on rational expectations about future resources, market conditions, etc - the microfoundations of what drives our economy. The ARMA specification, while practically and statistically sound, is contradicted by economic theory and practice - the weak form of the efficient market hypothesis states that it is impossible to forecast future values of asset prices using past values. But perhaps this view is incomplete.
+
+Any model that attempts to capture relationships in the real world will only work until an omitted variable is found. The elegance of the multivariate CAViaR model is that it provides insight into why a prediction is wrong; the change in the angle between resultant vectors is a sensible measurement of economic changepoints (CHANGE). However, errors in the world are costly, and it's wishful thinking to say that explaining why the error occured is sufficient.
+
+As such, for future work it's worth exploring the notion of weighting an ARMA-approach more heavily when predictions using fundamentals were too high, then not only would this after-the-fact recognition be achieves, but also a hierarchical model that captures fundamental relationships in the economy and potentially changes our understanding of asset prices in general - a synthesis between Keynes' animal spirits during a time of severe crisis; where a model cannot explain shifts, and a more rational world that explains other periods. In addition to significant predictive power because of the switching between the two worlds, there's also an elegant explanation; a way to explain changes in the usefulness of the underpinnings in the economy. Because of the flexibility of the model, it's entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred.
+
+
+# Code Appendix
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
 ```
+
+# Literature Cited
