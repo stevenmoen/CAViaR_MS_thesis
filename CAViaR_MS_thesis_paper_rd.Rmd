@@ -1,6 +1,6 @@
 ---
 title: "Multivariate CAViaR"
-subtitle: "A New Approach to Risk Modeling"
+subtitle: "A More Insightful Approach to Risk Modeling"
 author: "Steven Moen"
 date: "Thursday, April 30th, 2020"
 output:
@@ -19,23 +19,82 @@ This paper builds upon previous literature for modeling value-at-risk quantiles 
 
 # Background and Introduction
 
-When modeling financial time series, simply considering the mean and the variance is insufficient. In fact, modeling a 1% or a 5% quantile of daily returns is a way to understand what happens on the worst days and to have a clearer picture of what might happen during a downturn. Indeed, finance theory suggests that the reasons why stocks earn a x% real return (CITE) after taxes and inflation over very long periods of time is because of the fact that there might be a significant downturn in asset prices. 
 
-One way to understand downside risk is using value-at-risk (VaR); a one-day 1% VaR of -1 million dollars for a portfolio means that the portfolio will lose at least $1 million on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies (CITE?).
+When modeling financial time series, simply considering the mean and the variance is insufficient. In fact, modeling a 1% or a 5% quantile of daily returns is a way to understand what happens on the worst days and to have a clearer picture of what might happen during a downturn. Indeed, finance theory suggests that a primary reason why the S&P500, which is a market-capitalization weighted index composed of the 500-largest publicly traded companies in the United States, has earned 6.8% inflation-adjusted pre-tax return with dividend reinvestment from January 1871 through April 2020 (CITE) is because of the risk of a significant downturn. Kerry Pechter at Forbes describes it as a premium for the fact that "stocks are riskier" and "more prone to price fluctuations in the short run" compared to lower risk investments. While the long-run picture of stock returns is a bit clearer, the short-run is a huge question - an investment manager using financial leverage to magnify returns (positive or negative) that could leave them in dire straits if their investments fell rapidly, despite a sound long-run strategy.
 
-Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation1. According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory”2. As such, they propose a framework called CAViaR that forecasts the VaR quantile directly using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions3,4.
+While there are other ways to understand and measure downside risk, a commonly accepted means is using value-at-risk (VaR). The metric is understood as follows: a one-day 1% VaR of -1 million dollars for a portfolio means that the portfolio will lose at least $1 million on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies in the United States, the United Kingdom, and Europe (CITE).
 
-My analysis of this model shows that it performed well on the test sample – the last 200 trading days of 2008 – for a stock like Amazon that was highly volatile during the training sample, which included data from previous years. However, the forecast performs poorly for a stock like Proctor & Gamble (PG) that was less volatile during the training sample. Both stocks were highly volatile during the late stages of 2008, but because of the non-representative training sample for PG, the model significantly underestimated the riskiness of PG. Therefore, I propose developing a model that combines stocks into a multivariate setting to capture correlations to improve forecast accuracy. I want to extend a diffusion index model, originally developed by Stock and Watson for predicting conditional means, to the domain of a quantile regression to forecast VaR5,6. Initial work that I have done shows the diffusion index model is useful in predicting the mean returns of the SPY using U.S. sector ETFs as predictors. For this reason, I suspect that using portfolio components in the same fashion to predict a specific quantile will be useful as well, and I plan to develop theoretical guarantees about the distribution of parameters in this setting. I hope to conclude this work within my first year in the Ph.D. program.
-
+Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation (ADD CITATION - BOUDOUKH). According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” (ADD CITATION - ENGLE). As such, they propose a framework called CAViaR that forecasts the VaR quantile directly using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions (ADD CITATION - KOENKER, PORTNOY).
 
 
 # Methods Used
 
-Fill in.
+A common problem in statistical analysis occurs when a training sample is significantly different than that of the test sample. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Proctor & Gamble (ticker: PG) and their performance during the great recession. A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "worst financial crisis since the Great Depression" according to Gary Becker (CITE), a Nobel-prize winning Economist. Interestingly, the forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included data from previous years (HOW MANY?), but PG was fairly calm. How would it be possible for a univariate model such as CAViaR, that does not explictly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the forecast?
+
+Thus, the idea of combining stocks into a multivariate setting to capture correlations and better forecast risk was formed. A natural choice appeared to be the diffusion index model, originally developed by Stock and Watson for predicting conditional means [TWO CITATIONS]. The model for forecasting the conditional mean is specified below.
+
+## Diffusion Index Model
+
+A useful means of predicting stock movements in the future is the Stock and Watson diffusion index. The model is outlined below, which is adapted from Multivariate Time Series Analysis With R and Financial Applications by Ruey S. Tsay [ADD CITATION].
+
+There are two relevant equations:
+
+$$
+\boldsymbol{z_t} = \boldsymbol{Lf_t} + \boldsymbol{\epsilon_t}
+$$
+
+and 
+
+$$
+y_{t+h} = \boldsymbol{\beta^\prime f_t} + \boldsymbol{e_{t+h}}
+$$
+
+In the first equation $\boldsymbol{z_t} = (z_{1t}, ...., z_{kt})^\prime$ is an observed time series with mean 0, $\boldsymbol{f_t}$ is an m-dimensional vector of common factors with mean 0 and identity covariance matrix, $\boldsymbol{L}$ is a $k$ x $m$ loading matrix, and $\boldsymbol{\epsilon_t}$ is a i.i.d. sequence of random vectors with mean 0 and covariance matrix $\boldsymbol{\Sigma_e}$.
+
+In the second equation, which represents the h-step ahead prediction based on $\boldsymbol{f_t}$, $y_t$ is the scalar time series of interest, $h$ is the forecast horizon, $\boldsymbol{\beta}$ represents the vector of coefficients, and $e_t$ is a sequence of uncorrelated random variables with mean 0 and constant variance. 
+
+To model the data, principal component analysis is performed on the covariates described below to obtain an estimate of $\boldsymbol{f_t}$. Then the $\boldsymbol{\beta}$ coefficients are estimated using ordinary least squares.
+
+## CAViaR Model
+
+However, work needed to be done to align the diffusion index model with the CAViaR model, which is defined below. The following variables are required for use in the CAViaR model:
+
+A vector of portfolio returns 
+
+## Adaptive CAViaR Model
+
+$$
+f_t(\beta_1) = f_{t-1}(\beta_1) + \beta_1\left[\left(1+ \exp(G[y_{t-1} - f_{t-1}(\beta_1)])  \right)^{-1} - \theta \right] 
+$$
+
+## Symmetric Absolute Value CAViaR Model
+
+$$
+f_t(\boldsymbol{\beta}) = \beta_1 + \beta_2f_{t-1}(\boldsymbol{\beta}) + \beta_3|y_{t-1}|
+$$
+
+## Asymmetric Slope CAViaR Model
+
+$$
+f_t(\boldsymbol{\beta}) = \beta_1 + \beta_2f_{t-1}(\boldsymbol{\beta}) + \beta_3(y_{t-1})^+ + \beta_4(y_{t-1})^-
+$$
+
+## Indirect GARCH (1,1) CAViaR Model
+
+$$
+f_t(\boldsymbol{\beta}) = (\beta_1 + \beta_2f_{t-1}^2(\boldsymbol{\beta}) + \beta_3y_{t-1}^2)^{1/2}
+$$
+
+[ADD SPECIFICATION]
+
+As such, the following model is used to combine the two ideas:
+
+VAR = INTERCEPT + PAST VALUES + AR COMPONENT + ERROR
+
 
 # Data Used
 
-The response variable used in this analysis is SPY, which is an exchange-traded fund that aims to track the performance of the 500 largest market-capitalization stocks in the United States (CITE). It is broadly used as a bellweather of the U.S. economy (CITE), and has the advantage of avoiding survivorship bias - while an individual stock might go bankrupt or merge with another, it's reasonable to assume that these issues do not apply with an ETF. 
+The response variable used in this analysis is SPY, which is an exchange-traded fund that aims to track the performance of the S&P 500, which is discussed above. It is broadly used as a bellweather of the U.S. economy (CITE), and has the advantage of avoiding survivorship bias - while an individual stock might go bankrupt or merge with another, it's reasonable to assume that these issues do not apply with an ETF. 
 
 Following this logic, there are several classes of response variables used in this analysis. The first group is a set of U.S. sector ETFs obtained from Seeking Alpha using the link below. As with the response variable, these ETFs were publicly traded throughout the Great Recesssion.
 
@@ -75,9 +134,6 @@ Lastly, all of the above are run together.
 
 # Results
 
-# CODE
-
-## Libraries
 
 ```{r}
 # Read in relevant libraries
@@ -116,7 +172,6 @@ quiet <- function(x) {
 } 
 ```
 
-## Univariate CAViaR Section
 
 ```{r}
 #' This is a function which pulls data for use in the CAViaR model
@@ -243,7 +298,6 @@ loss_calc_uv = function(symbol, start_dt, end_dt, nfcst, model = 1, level = 0.01
 
 ```
 
-## MV Caviar - Pulling the data
 
 ```{r, cache = TRUE}
 #' This is a function which creates a data frame for the response and explanatory variables that we'll feed into the diffusion index
@@ -330,9 +384,6 @@ pc_diff_index = function(diff_df){
 
 ```
 
-## MV Caviar - Modified DI code
-
-The code that is used in a diffusion index model is as follows. The key is figuring out where to make the extension. I'll go through and comment everything and see what's what.
 
 ```{r}
 #' Below is the modified diffusion index code.
@@ -428,9 +479,6 @@ mod_di = function (y, x, orig, m, tau, end = NULL, print_mdl = 0)
 
 ```
 
-Now that we have the function, let's see if we can get it to work. First, we'll need to compile all of our data
-
-Let's add a code which incorporates the previous values of the return.
 
 ```{r}
 #' Below is the modified diffusion index code to include lagged variables.
@@ -635,10 +683,6 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print_mdl = 0, model
 
 ```
 
-
-
-## MV Caviar - Calcuating losses
-
 ```{r}
 # Decide on the optimal number of vectors.
 
@@ -687,9 +731,6 @@ loss_calc = function(y, x, orig, m, tau, mod_di = 0, ar_tf = 1, p = 1, print_mdl
 
 ```
 
-
-
-## MV Caviar - Choosing the optimal number of predictors
 
 ```{r}
 #' Function that selects the optimal number of predictors
@@ -816,8 +857,6 @@ pretty_pm = function(m1, m2, m3, m4){
 ```
 
 
-## MV Caviar - Running the univariate model multiple times
-
 ```{r}
 #' Here is a function that runs the univariate CAViaR model 4 times
 #'
@@ -869,10 +908,6 @@ gen_uv_test = function(df, nfcst, tau, no_run = c(0,0,0,0)){
 
 ```
 
-
-
-## MV Caviar - Plotting function
-
 ```{r}
 #' Function to plot the data which we generate in previous functions
 #'
@@ -913,8 +948,6 @@ plt_data = function(plot_matrix, tau, resp_var, ntest){
 
 ```
 
-## MV Caviar - Old Loss Test Function
-
 ```{r}
 #' A function to calculate losses based on the test sample
 #'
@@ -947,8 +980,6 @@ loss_test = function(true_vec, pred_vec, tau){
 ```
 
 
-
-## MV Caviar - A generalized loss calculation function
 
 ```{r}
 #' A function to calculate losses based on the plot matrix
@@ -986,7 +1017,6 @@ gen_loss_test = function(data_mat, tau){
 ```
 
 
-## MV Caviar - Tables function
 
 ```{r}
 #' A function to make a nice comparison of losses
@@ -1013,14 +1043,6 @@ pretty_tables = function(data_mat, loss_list, tau, ntest){
   df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
 }
 ```
-
-
-
-
-## Export function
-
-
-
 
 ```{r}
 #' A dressed up version of the export function
@@ -1163,43 +1185,6 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
 
 
 
-# Sector ETFs as Explanatory Variables
-
-Here's what I'm thinking.
-
-Lowest level: 1%, 5%, 10% VaR
-Next, 2008, 2010, 2014, or 2016
-Highest - ETF choices
-3 x 4 x 5 = 60 runs
-
-```{r}
-# Import the data from CSV's
-
-# abc = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2008_usetf.csv", sep = ",", header = T)
-# head(abc)
-# as.xts(abc, order.by = abc[,1])
-
-# test1 <- read.zoo("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2008_usetf.csv", sep = ",",  index.column =0, header = T)
-# dat_zoo <- read.zoo("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2008_usetf.csv", index.column=0, sep=",", header = T, format="%m/%d/%Y")
-# dat_zoo <- read.zoo("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2008_usetf.csv", index.column=0, sep=",", header = T, FUN=as.yearmon)
-# test1
-# dat_xts = as.xts(dat_zoo, order.by = dat_zoo[,1])
-
-```
-
-# Importing and Running Datasets
-
-```{r}
-# Mess around code - it works!
-abc = read.csv("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/var_1pc_2008_us_etf.csv", sep = ",", header = T, stringsAsFactors = FALSE)
-abc$Index = as.Date(abc$Index)
-# abc$index_t = as.POSIXct(abc$Index, format = "%Y-%m-%d")
-# index_t
-# head(abc)
-abc_x = xts(abc[,-1], order.by = abc[,1])
-# head(abc_x)
-```
-
 ```{r}
 #' A function to input the VaR files, plot them and generate tables
 #'
@@ -1225,35 +1210,25 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
   # Fix column names
   colnames(plot_mat) <- cn_input
   # Plot everything
-  plot = plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
+  plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
+  # plot = plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
   # Calculate losses
   l_list = gen_loss_test(plot_mat, tau = tau)
   # Put into tables
-  tables = pretty_tables(plot_mat, l_list, tau = tau, ntest = ntest)
+  pm_table = pretty_tables(plot_mat, l_list, tau = tau, ntest = ntest)
   # Print the tables and the plot
-  print(plot)
-  print(tables)
-  # print(pm_table)
+  # print(plot)
+  # print(tables)
+  print(pm_table)
   # Return the xts, the plot, the loss list, and the tables
-  return(list(plot_mat, plot, l_list, tables))
+  return(list(plot_mat))
+  # return(list(plot_mat, plot, l_list, tables))
 }
 ```
 
-```{r}
-# test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
-```
 
 # Problem Solving on 4.29.2020
 
-```{r}
-# Create a fake data frame, and assign silly numbers
-df_FAKE = as.data.frame(cbind(1,2,3,4))
-rownames(df_FAKE) <- c("Numbers")
-colnames(df_FAKE) <- c("One", "Two", "Three", "Four")
-df_FAKE %>% kable(caption = "Fake Data", digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", 4, "fake data points"))
-
-# df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
-```
 
 
 ## 2008 Ending
@@ -1265,12 +1240,12 @@ df_FAKE %>% kable(caption = "Fake Data", digits = 3) %>% kable_styling("striped"
 
 # Call the above function
 v1_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
-pretty_tables(v1_2008_usetf[[1]], v1_2008_usetf[[3]], tau = 0.01, ntest = 250)
+# pretty_tables(v1_2008_usetf[[1]], v1_2008_usetf[[3]], tau = 0.01, ntest = 250)
 v5_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2008_us_etf.csv", 0.05)
 v10_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2008_us_etf.csv", 0.10)
 
 # head(v10_2008_usetf[[1]])
-v10_2008_usetf
+# v10_2008_usetf
 ```
 
 ```{r}
@@ -1633,7 +1608,9 @@ This conclusion drawn from the above results might support the notion of combini
 
 Any model that attempts to capture relationships in the real world will only work until an omitted variable is found. The elegance of the multivariate CAViaR model is that it provides insight into why a prediction is wrong; the change in the angle between resultant vectors is a sensible measurement of economic changepoints (CHANGE). However, errors in the world are costly, and it's wishful thinking to say that explaining why the error occured is sufficient.
 
-As such, for future work it's worth exploring the notion of weighting an ARMA-approach more heavily when predictions using fundamentals were too high, then not only would this after-the-fact recognition be achieves, but also a hierarchical model that captures fundamental relationships in the economy and potentially changes our understanding of asset prices in general - a synthesis between Keynes' animal spirits during a time of severe crisis; where a model cannot explain shifts, and a more rational world that explains other periods. In addition to significant predictive power because of the switching between the two worlds, there's also an elegant explanation; a way to explain changes in the usefulness of the underpinnings in the economy. Because of the flexibility of the model, it's entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred.
+As such, for future work it's worth exploring the notion of weighting an ARMA-approach more heavily when predictions using fundamentals were too high, then not only would this after-the-fact recognition be achieves, but also a hierarchical model that captures fundamental relationships in the economy and potentially changes our understanding of asset prices in general - a synthesis between Keynes' animal spirits during a time of severe crisis; where a model cannot explain shifts, and a more rational world that explains other periods. In addition to significant predictive power because of the switching between the two worlds, there's also an elegant explanation; a way to explain changes in the usefulness of the underpinnings in the economy. Because of the flexibility of the model, it's entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred. 
+
+Additional future work involves developing theoretical guarantees on the parameters in the multivariate CAViaR model. One advantage of both the diffusion index model and the CAViaR model is that both have theorems about asymptotic normality and consistency [CONFIRM].
 
 
 # Code Appendix

@@ -15,4 +15,5 @@ SparseM
 quantreg
 MTS
 plot3D
+citr
 Rcpp
