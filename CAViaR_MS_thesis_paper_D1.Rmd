@@ -1,8 +1,8 @@
 ---
 title: "Multivariate CAViaR"
 subtitle: "An Insightful Approach to Risk Modeling"
-author: "Steven Moen"
-date: "Wednesday, May 6th, 2020"
+author: "Steven Moen's M.S. Thesis"
+date: "Thursday, May 7th, 2020"
 output:
   pdf_document: default
   html_notebook: default
@@ -22,15 +22,15 @@ This thesis builds upon previous literature for modeling value-at-risk (defined 
 
 # Background and Introduction
 
-When modeling financial time series, simply considering the mean and the variance is insufficient for an accurate depiction of the returns - stock returns are well-known for having fat tails and are difficult to model using a normal distribution [@Fama1965]. In fact, modeling a 1% or a 5% quantile of daily returns is a better way to understand and predict what happens on the worst trading days and to give a clearer picture of what might happen during a downturn. Indeed, finance theory suggests that a primary reason why the S&P 500, which is a market-capitalization weighted index composed of the 500-largest publicly traded companies in the United States, has earned a 6.8% inflation-adjusted pre-tax return with dividend reinvestment from January 1871 through April 2020 [@PK2019] is because of the risk of a significant downturn. Kerry Pechter at Forbes describes it as a premium for the fact that "stocks are riskier" and "more prone to price fluctuations in the short run" compared to lower risk investments [@Pechter2020]. A portfolio manager must indeed consider the long-run picture; a small difference in the annual rate of return can make an enormous difference in the ending value of investments. However, focusing entirely on long-run value generation is not the only consideration a prudent manager ought to make. While forecasting stock returns in the long-run is challening, the performance of indicies such as the S&P 500, despite seemingly existential threats such as the World Wars and the Great Depression, does give some confidence to investors who try to focus on long-run value generation. Ignoring the short-run reminds one of John Maynard Keynes' famous maxim that the "long run is a misleading guide to current affairs" because "in the long run we are all dead" [@Keynes1923], and moreover, the short-run impact of a strategy is often more difficult to understand than the long-run results, and potentially more precarious. An investment manager using financial leverage to magnify returns (positive or negative) could be left in dire straits if their investments fell rapidly, despite a sound long-run strategy.
+When modeling financial time series, simply considering the mean and the variance is insufficient for an accurate depiction of the returns - stock returns are well-known for having fat tails and are difficult to model using a normal distribution [@Fama1965]. In fact, modeling a 1% or a 5% quantile of daily returns is a better way to understand and predict what happens on the worst trading days and to give a clearer picture of what might happen during a downturn. Indeed, finance theory suggests that a primary reason why the S&P 500, which is a market-capitalization weighted index composed of the 500-largest publicly traded companies in the United States, has earned a 6.8% inflation-adjusted pre-tax return with dividend reinvestment from January 1871 through April 2020 [@PK2019] is because of the risk of a significant downturn. Kerry Pechter at Forbes describes it as a premium for the fact that "stocks are riskier" and "more prone to price fluctuations in the short run" compared to lower risk investments [@Pechter2020]. A portfolio manager must indeed consider the long-run picture; a small difference in the annual rate of return can make an enormous difference in the ending value of investments. However, focusing entirely on long-run value generation is not the only consideration a prudent manager ought to make. While forecasting stock returns in the long-run is challenging, the performance of indices such as the S&P 500, despite seemingly existential threats such as the World Wars and the Great Depression, does give some confidence to investors who try to focus on long-run value generation. Ignoring the short-run reminds one of John Maynard Keynes' famous maxim that the "long run is a misleading guide to current affairs" because "in the long run we are all dead" [@Keynes1923], and moreover, the short-run impact of a strategy is often more difficult to understand than the long-run results, and potentially more precarious. An investment manager using financial leverage to magnify returns (positive or negative) could be left in dire straits if their investments fell rapidly, despite a sound long-run strategy.
 
-While there are other ways to understand and measure downside risk, a commonly accepted method is using value-at-risk (VaR). The metric is understood as follows: a one-day 1% VaR of -10% for a portfolio means that the portfolio will lose at least 10% of its value on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies in the United States, the United Kingdom, and Europe[@Holton2014].
+While there are other ways to understand and measure downside risk, a commonly accepted method is using value-at-risk (VaR). The metric is understood as follows: a one-day 1% VaR of -10% for a portfolio means that the portfolio will lose at least 10% of its value on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies in the United States, the United Kingdom, and Europe [@Holton2014].
 
 Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation [@Richardson2005]. According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” [@Engle2004]. They propose a framework called CAViaR that directly forecasts the VaR quantile directly using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions [@Portnoy1991].
 
 # Methods Used
 
-A common problem in statistical analysis occurs when a training sample is significantly different from that of the test sample. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Proctor & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the 2nd quarter of 2004, but PG was fairly stable. How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
+A common problem in statistical analysis occurs when a training sample is significantly different from that of the test sample. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Proctor & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the second quarter of 2004, but PG was fairly stable. How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
 
 Thus, the idea of combining stocks into a multivariate setting to capture correlations and better forecast risk was formed. A natural choice appeared to be the diffusion index model, originally developed by Stock and Watson for predicting conditional means [@Stock2002; @Stock2002a]. The model for forecasting the conditional mean is specified below.
 
@@ -54,19 +54,37 @@ In the first equation $\boldsymbol{z_t} = (z_{1t}, ...., z_{kt})^\prime$ is an o
 
 In the second equation, which represents the h-step ahead prediction based on $\boldsymbol{f_t}$, $y_t$ is the scalar time series of interest, $h$ is the forecast horizon, $\boldsymbol{\beta}$ represents the vector of coefficients, and $e_t$ is a sequence of uncorrelated random variables with mean 0 and constant variance. 
 
-To model the data, principal component analysis is performed on the covariates described below to obtain an estimate of $\boldsymbol{f_t}$. Then the $\boldsymbol{\beta}$ coefficients are estimated using ordinary least squares.
+To model the data, principal component analysis is performed on the covariates described below to obtain an estimate of $\boldsymbol{f_t}$. When modeling the conditional mean, the $\boldsymbol{\beta}$ coefficients are estimated using ordinary least squares, however in the specification below they are not. A specific formulation mentioned in the textbook is as follows, where the individuals diffusion indices are given by $f_it$, and the goal is a one-step ahead prediction of $y_t$.
+
+$$
+y_{t+1} = \beta_0 + \sum_{i=1}^m \beta_i f_{it} + e_t
+$$
 
 ## Univariate CAViaR Model Specifications
 
-However, work needed to be done to align the diffusion index model with the CAViaR model, which is defined below. The following variables are required for use in the CAViaR model:
+However, work needed to be done to align the diffusion index model with the CAViaR model, which is defined below. The following variables are required for use in the CAViaR model. For ease of notation, these are sourced directly from the Engle and Manganelli 2004 CAViaR paper [@Engle2004], with some added description:
 
-[DESCRIPTION OF VARIABLES]
+- $(y_t)_{t=1}^T$ is a "vector of portfolio returns"
+- $\theta$ is the "probability associated with VaR" (a 5% VaR would mean $\theta = 0.05$)
+- $\boldsymbol{x_t}$ is a "vector of time $t$ observable variables"
+- $f_t(\boldsymbol{\beta}) \equiv f_t(\boldsymbol{x_{t-1}, \boldsymbol{\beta_\theta}})$ is the "time $t \theta$ quantile of the distribution of portfolio returns formed at time $t-1$"
+
+The authors then describe a "generic CAViaR specification" as follows:
+
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 + \sum_{i=1}^q \beta_i f_{t-1}(\boldsymbol{\beta}) + \sum_{j=1}^r \beta_j l(\boldsymbol{x_{t-j}})
+$$
+
+What's interesting about the general setup is that there are two main components to the model - lagged observed variables (represented by $l$) and lagged values of unknown parameters, which in the specification below is used as moving average terms. As such, it's reasonable to generalize the specifications below as nonlinear ARMA models where $y_{t-1}$ terms refer to previous returns, whereas $f_{t-1}(\beta_1)$ terms refer to previous predictions.
+
 
 ### Adaptive CAViaR Model
 
 $$
 f_t(\beta_1) = f_{t-1}(\beta_1) + \beta_1\left[\left(1+ \exp(G[y_{t-1} - f_{t-1}(\beta_1)])  \right)^{-1} - \theta \right] 
 $$
+
+The authors describe the parameter $G$ as "some positive number", but in the Empirical Results section of their paper, they use $G = 10$, so that's what is used in the results section of this paper.
 
 ### Symmetric Absolute Value CAViaR Model
 
@@ -88,38 +106,57 @@ $$
 
 ## Multivariate CAViaR Model Specifications
 
-The multivariate CAViaR model takes inspiration from the models described above in several specifications. The general model form looks like the specification below.
+The multivariate CAViaR model takes inspiration from the models described above in several specifications, as mentioned in the original specifications. The general model form looks like the specification below.
 
-VAR = INTERCEPT + PAST VALUES + AR COMPONENT + ERROR
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 +\sum_{i=1}^p \beta_i y_{t-i} + \sum_{j=1}^m \beta_{j+p} f_{j,t-1} + e_t
+$$
+
+As with the univariate CAViaR model, the object of interest is a $\theta$ percentile return and the model is fit iteratively to minimize the loss function on the training data. However, there are some notable differences between the univariate model and the multivariate model. First, there are no moving average terms (lagged error terms) - the reasoning for this is because this model aims for a clear economic interpretation, and crisp interpretations of MA models are harder to create. Also, moving average models require recursive estimation since error terms are not observed, and so developing a method to work with these errors in a robust regression framework is challenging.
+
+Second, in some of the specifications below, there are lagged return variables. This is similar to the univariate CAViaR specification, though there is often more than 1 lag as in the univariate model - there are $p$ lags in the dataset. Third, in all of the specifications below, there are $m$ diffusion indices used in each model lagged by one time step to avoid look-ahead bias.
+
 
 ### Multivariate CAViaR: No Lags Model
 
-VAR = INTERCEPT + PAST VALUES + ERROR
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 +\sum_{j=1}^m \beta_{j} f_{j,t-1} + e_t
+$$
 
 ### Multivariate CAViaR with Autoregressive Terms Added
 
-VAR = INTERCEPT + PAST VALUES + AR COMPONENT + ERROR
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 +\sum_{i=1}^p \beta_i y_{t-i} + \sum_{j=1}^m \beta_{j+p} f_{j,t-1} + e_t
+$$
 
 ### Multivariate CAViaR with Symmetric Absolute Value Autoregressive Terms Added
 
-VAR = INTERCEPT + PAST VALUES + SAV AR COMPONENT + ERROR
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 +\sum_{i=1}^p \beta_i |y_{t-i}| + \sum_{j=1}^m \beta_{j+p} f_{j,t-1} + e_t
+$$
 
 ### Multivariate CAViaR with Asymmetric Slope Autoregressive Terms Added
 
-VAR = INTERCEPT + PAST VALUES + AS AR COMPONENT + ERROR
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 +\sum_{i=1}^p \beta_i (y_{t-i})_+ + \sum_{j=p+1}^{2p} \beta_i (y_{t-i})_- + \sum_{k=1}^m \beta_{k+2p} f_{k,t-1} + e_t
+$$
 
 
 ## Fitting the Models
 
 To fit the models, an optimal value of $m$ diffusion indices and $p$ autoregressive terms are added (or $2p$ in the case of the asymmetric slope model). The optimal values of these parameters are determined using a validation dataset. In all of the runs below, there are a total of 5 years of trading days, or about 1,260 days assuming 252 trading days a year. The adjusted closing prices are logged and differenced, shortening the dataset by one. After doing this, the last 250 data points are reserved as test data, and the 250 data points before that are used as a validation set. Measured by the loss function written out below, the values of $p$ and $m$ that minimize losses are chosen and the optimal model is refit over both the training and the validation data combined and then evaluated on the test data. Note that there is an optimal model is chosen for each of the four multivariate CAViaR specifications described above, so there are 4 optimal sets of $p$ and $m$ chosen for each set of model. Thus, there are 8 models compared on the test data - 4 univariate CAViaR models and 4 multivariate CAViaR models.
 
-[LOSS FUNCTION]
+From the CAViaR paper, the $\theta$th regression quantile is defined as any $\boldsymbol{\hat{\beta}}$ that solves the following loss function:
+
+$$
+\overset{\min}\beta \frac{1}{T}\sum_{t=1}^T [\theta - I(y_t < f_t(\boldsymbol{\beta}))][y_t - f_t(\boldsymbol{\beta})]
+$$
 
 # Data Used
 
 The response variable used in this analysis is SPY, which is an exchange-traded fund that aims to track the performance of the S&P 500, which is discussed above. It is broadly used as a bellwether of the U.S. economy, and has the advantage of avoiding survivorship bias - while an individual stock might go bankrupt or merge with another, it's reasonable to assume that these issues do not apply with an ETF. 
 
-Following this logic, there are several classes of response variables used in this analysis. The first group is a set of U.S. sector ETFs. As with the response variable, these ETFs were publicly traded throughout the Great Recession of 2008.
+Following this logic, there are several classes of response variables used in this analysis. The first group is a set of U.S. sector ETFs obtained from Seeking Alpha [@SeekingAlpha2020]. As with the response variable, these ETFs were publicly traded throughout the Great Recession of 2008.
 
 a. Utilities (XLU)
 b. Consumer Staples (XLP)
@@ -131,7 +168,7 @@ g. Financial Services (XLF)
 h. Basic Materials (XLB)
 i. Energy (XLE)
 
-The second group is Global Sector ETFs. The rationale for including these is that perhaps some global exposure is useful in understanding the broader market.
+The second group is Global Sector ETFs, also from Seeking Alpha [@SeekingAlpha2020]. The rationale for including these is that perhaps some global exposure is useful in understanding the broader market.
 
 a. Utilities (JXI)
 b. Consumer Staples (KXI)
@@ -144,14 +181,16 @@ h. Financial Services (IXG)
 i. Basic Materials (MXI)
 j. Energy (IXC)
 
-The third group is bond ETFs. Like the previous two groups, these ETFs potentially contain forward-looking information about the stock market. Link below:
+The third group is bond ETFs. Like the previous two groups, these ETFs potentially contain forward-looking information about the stock market. These ETFs were chosen because they were the first fixed-income ETFs available in the United States, and had enough history for this paper [@NA2017].
 
 a. iShares 1-3 Year Treasury Bond Fund (SHY)
 b. iShares 7-10 Year Treasury Bond Fund (IEF)
 c. iShares 20+ Year Treasury Bond Fund (TLT)
 d. iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
 
-Lastly, all of the above three groups are run together. In each run, the explanatory variables are lagged to avoid look-ahead bias. All of the runs analyze the difference of the log of the adjusted closing price. The reason for using the differenced log is that it closely approximates the percentage change of the price for small changes. The reason for using the adjusted closing prices is that an adjusted closing price excludes the effects of "corporate actions such as stock splits, dividends / distributions and rights offerings" [@Gant2019]. While dividends are essential to study the long-term performance of a strategy, studying short-term price movements do not require understanding the effects of dividend reinvestment.
+Lastly, all of the above three groups are run together. One reason for having bond and stocks grouped together is the fact that bonds are somewhat of a substitute for equities, which tend to drop more in a period of crisis [@Amadeo2020]. As such, some unexplained movements in the stock price could be picked up by bond movements. 
+
+In each run, the explanatory variables are lagged to avoid look-ahead bias. All of the runs analyze the difference of the log of the adjusted closing price. The reason for using the differenced log is that it closely approximates the percentage change of the price for small changes. The reason for using the adjusted closing prices is that an adjusted closing price excludes the effects of "corporate actions such as stock splits, dividends / distributions and rights offerings" [@Gant2019]. While dividends are essential to study the long-term performance of a strategy, studying short-term price movements do not require understanding the effects of dividend reinvestment. While there are many candidate ETFs chosen, these were chosen because they all had price history going back through the beginning of 2004.
 
 # Results
 
@@ -951,7 +990,7 @@ plt_data = function(plot_matrix, tau, resp_var, ntest){
     for (i in 1:ncol(plot_matrix)){
       if (i == 1){
         # 4/2/2020 - fixing the index
-        plot.ts(ind_vals,plot_matrix[,i], type = "l", xlab = paste("Days Since", as.Date(start)), ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = paste("Predicting", resp_var, "Returns from", as.Date(start), "to", as.Date(end)), sub = paste("The VaR Level is ", 100*tau, "%", "; There are ", ntest, " Trading Days Plotted Above", sep = ""))
+        plot.ts(ind_vals,plot_matrix[,i], type = "l", xlab = paste("Days Since", as.Date(start)), ylab = "Approx. Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = paste("Predicting", resp_var, "Returns from", as.Date(start), "to", as.Date(end)), sub = paste("The VaR Level is ", 100*tau, "%", "; There are ", ntest, " Trading Days Plotted Above", sep = ""))
         # plot.ts(index(plot_matrix), plot_matrix[,i], type = "l", xlab = "Trading Days", ylab = "Percent Change in PG", ylim = c(min_val,max_val), lwd = 1, main = "Predicting PG Returns Over Last 250 Trading Days in 2008", sub = paste("The VaR Level is ", 100*tau, "%", sep = ""))
     } else if(i %in% seq(2,8,1)) {
         lines(ind_vals,plot_matrix[,i], col = i-1, lty = 2)
@@ -1258,34 +1297,127 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
 }
 ```
 
+For the sake of brevity, the results with only U.S. ETFs, global ETFs, or bonds is included in a later results section. The results are similar to the results below. To test how well the models do at different VaR levels, 1%, 5%, and 10% are tested.
 
-## 2008 Ending
+## 2008 Test Period - All ETFs
+
+### 1% VaR
+
+```{r}
+# Call the above function
+v1_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2008_all_etf.csv", 0.01)
+```
+
+### 5% VaR
+
+```{r}
+v5_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2008_all_etf.csv", 0.05)
+```
+
+### 10% VaR
+
+```{r}
+v10_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2008_all_etf.csv", 0.10)
+```
+
+The univariate CAViaR models significantly outperform the multivariate model, particularly at the 1% level. The extreme behavior towards the end of 2008 proved difficult for the multivariate model to pick up on.
+
+## 2010 Test Period - All ETFs
+
+### 1% VaR
+
+```{r}
+# Call the above function
+v1_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2010_all_etf.csv", 0.01)
+```
+
+### 5% VaR
+
+```{r}
+# Call the above function
+v5_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2010_all_etf.csv", 0.05)
+```
+
+### 10% VaR
+
+```{r}
+# Call the above function
+v10_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2010_all_etf.csv", 0.10)
+```
+
+The multivariate forecast is largely in line with the univariate CAViaR model. Generally, it seems like the univariate model does a better job tracking the response variable in the case of a large swing because of the moving average component. Also, while the multivariate models had a rate of VaR breaks that was too high for 2008, the rate of VaR breaks was generally too low for the multivariate models in 2010.
+
+## 2014 Test Period - All ETFs
+
+### 1% VaR
+
+```{r}
+v1_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2014_all_etf.csv", 0.01)
+```
+
+### 5% VaR
+
+```{r}
+v5_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2014_all_etf.csv", 0.05)
+```
+
+### 10% VaR
+
+```{r}
+v10_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2014_all_etf.csv", 0.10)
+```
+
+As with the 2010 results, the multivariate and univariate forecasts are very similar in accuracy for all 3 VaR levels. In terms of the VaR breakage rate for the 1% level, 3 out of the 4 multivariate models were extremely close. There also appears to be less differentiation between the multivariate and the univariate models compared to the 2010 and 2014 results.
+
+## 2016 Test Period - All ETFs
+
+### 1% VaR
+
+```{r}
+v1_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2016_all_etf.csv", 0.01)
+```
+
+### 5% VaR
+
+```{r}
+v5_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2016_all_etf.csv", 0.05)
+```
+
+### 10% VaR
+
+```{r}
+v10_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2016_all_etf.csv", 0.10)
+```
+
+As with 2010 and 2014, the results between model classes are similar. The multivariate model performs quite well with VaR breaks at the 5% and 10% level, and the models seem to be very closely clustered together.
+
+# Conclusions and Future Work
+
+The problem of how to predict a low quantile of a stock's log return when the training sample is substantially different from the test scenario is an enormously difficult problem. Almost axiomatically, the distribution is nonstationary over time. How is it possible to predict the return of an index like the S&P500 during a period of market turmoil such as the Great Recession? While the univariate CAViaR model performs comparatively well during times of stress, it performs about the same as the multivariate CAViaR model during more benign economic periods.
+
+This conclusion drawn from the above results might support the notion of combining the two models in some sort of a mixture model - aiming to use the basket of ETFs during good times, and use the CAViaR ARMA specification during bad times. The approach of using ETFs allows a prediction based on forward-looking expectations of fundamental factors. Indeed, ETFs are just baskets of individual stocks or bonds, and those securities are (in theory) based on rational expectations about future resources, market conditions, etc - the microfoundations of what drives our economy. The ARMA specification, while practically and statistically sound, is contradicted by economic theory and practice - the weak form of the efficient market hypothesis states that it is impossible to forecast future values of asset prices using past values. But perhaps this view is incomplete.
+
+Any model that attempts to capture relationships in the real world will only work until an omitted variable is found. The elegance of the multivariate CAViaR model is that it provides insight into why a prediction is wrong; the change in the angle between resultant vectors is a sensible measurement of economic changepoints. However, errors in the world are costly, and it's wishful thinking to say that explaining why the error occurred is sufficient.
+
+As such, for future work it's worth exploring the notion of weighting an ARMA-approach more heavily when predictions using fundamentals were too high, then not only would this after-the-fact recognition be achieved, but also a hierarchical model that captures fundamental relationships in the economy and potentially changes our understanding of asset prices in general - a synthesis between Keynes' animal spirits during a time of severe crisis; where a model cannot explain shifts, and a more rational world that explains other periods. In addition to significant predictive power because of the switching between the two worlds, there's also an elegant explanation; a way to explain changes in the usefulness of the underpinnings in the economy. Because of the flexibility of the model, it's entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred. 
+
+Additional future work involves developing theoretical guarantees on the parameters in the multivariate CAViaR model. One advantage of both the diffusion index model and the CAViaR model is that both have theorems about asymptotic normality and consistency.
+
+# Additional Results
+
+## 2008 Test Period
 
 ### U.S. ETFs
 
 ```{r}
-# return(list(plot_mat, plot, l_list, tables))
-
 # Call the above function
 v1_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
-# pretty_tables(v1_2008_usetf[[1]], v1_2008_usetf[[3]], tau = 0.01, ntest = 250)
 v5_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2008_us_etf.csv", 0.05)
 v10_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2008_us_etf.csv", 0.10)
 
-# head(v10_2008_usetf[[1]])
-# v10_2008_usetf
 ```
 
 The results for the U.S. ETFs clearly show that the univariate model outperforms the multivariate model during the great recession.
-
-```{r}
-# 1%, 5%, 10% VaR - 2008 - 1st set of predictors
-# var_1pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2008_us_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2008_us_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2008_us_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
-```
 
 ### Global ETFs
 
@@ -1298,28 +1430,6 @@ v10_2008_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 
 While the model with the global ETFs as predictors performs better than the model with U.S. ETFs, the univariate CAViaR model outperforms the multivariate model.
 
-```{r}
-# 1%, 5%, 10% VaR - 2008 - 2nd set of predictors
-# var_1pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2008_glob_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2008_glob_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2008_glob_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
-```
-
-### Commodity ETFs
-
-```{r}
-# 1%, 5%, 10% VaR - 2008 - 3rd set of predictors
-# var_1pc_2008_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2008_comm_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2008_comm_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2008_comm_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
-```
-
-
-
 ### Bond ETFs
 
 ```{r}
@@ -1331,41 +1441,7 @@ v10_2008_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 
 As with the previous two runs, the univariate model outperforms the multivariate model.
 
-```{r}
-# iShares 1-3 Year Treasury Bond Fund (SHY)
-# iShares 7-10 Year Treasury Bond Fund (IEF)
-# iShares 20+ Year Treasury Bond Fund (TLT)
-# iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
-# 1%, 5%, 10% VaR - 2008 - 4th set of predictors
-# var_1pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2008_bond_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2008_bond_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2008_bond_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
-```
-
-### All ETFs
-
-```{r}
-# Call the above function
-v1_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2008_all_etf.csv", 0.01)
-v5_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2008_all_etf.csv", 0.05)
-v10_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2008_all_etf.csv", 0.10)
-```
-
-While the inclusion of more explanatory variables seems to help the forecast, the univariate model outperforms the multivariate model.
-
-```{r}
-# 1%, 5%, 10% VaR - 2008 - 5th set of predictors
-# var_1pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2008_all_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2008_all_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2008_all_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
-```
-
-## 2010 Ending
+## 2010 Test Period
 
 ### U.S. ETFs
 
@@ -1378,15 +1454,6 @@ v10_2010_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_th
 
 The results are much better for the multivariate model here during a more benign period.
 
-```{r}
-# 1%, 5%, 10% VaR - 2010 - 1st set of predictors
-# var_1pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2010_us_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2010_us_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2010_us_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
-```
-
 ### Global ETFs
 
 ```{r}
@@ -1397,26 +1464,6 @@ v10_2010_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 ```
 
 As with the U.S. ETFs, the results are better.
-
-```{r}
-# 1%, 5%, 10% VaR - 2010 - 2nd set of predictors
-# var_1pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2010_glob_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2010_glob_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2010_glob_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
-```
-
-### Commodity ETFs
-
-```{r}
-# 1%, 5%, 10% VaR - 2010 - 3rd set of predictors
-# var_1pc_2010_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2010_comm_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2010_comm_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2010_comm_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
-```
 
 ### Bond ETFs
 
@@ -1429,41 +1476,7 @@ v10_2010_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 
 As with the previous two runs, the results from the bond ETFs are better than those from 2008.
 
-```{r}
-# iShares 1-3 Year Treasury Bond Fund (SHY)
-# iShares 7-10 Year Treasury Bond Fund (IEF)
-# iShares 20+ Year Treasury Bond Fund (TLT)
-# iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
-# 1%, 5%, 10% VaR - 2010 - 4th set of predictors
-# var_1pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2010_bond_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2010_bond_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2010_bond_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
-```
-
-### All ETFs
-
-```{r}
-# Call the above function
-v1_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2010_all_etf.csv", 0.01)
-v5_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2010_all_etf.csv", 0.05)
-v10_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2010_all_etf.csv", 0.10)
-```
-
-The inclusion of all predictors reveals similar results for the multivariate models as the previous forecasts; the results are generally in-line the univariate CAViaR model.
-
-```{r}
-# 1%, 5%, 10% VaR - 2010 - 5th set of predictors
-# var_1pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2010_all_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2010_all_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2010_all_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
-```
-
-## 2014 Ending
+## 2014 Test Period
 
 ### U.S. ETFs
 
@@ -1476,15 +1489,6 @@ v10_2014_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_th
 
 As with the results in 2014, the results from the U.S. ETFs shows a similar quality of predictions.
 
-```{r}
-# 1%, 5%, 10% VaR - 2014 - 1st set of predictors
-# var_1pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2014_us_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2014_us_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2014_us_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
-```
-
 ### Global ETFs
 
 ```{r}
@@ -1495,26 +1499,6 @@ v10_2014_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 ```
 
 The results show that the multivariate predictions are of similar quality to the predictions from the univariate model. 
-
-```{r}
-# 1%, 5%, 10% VaR - 2014 - 2nd set of predictors
-# var_1pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2014_glob_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2014_glob_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2014_glob_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
-```
-
-### Commodity ETFs
-
-```{r}
-# 1%, 5%, 10% VaR - 2014 - 3rd set of predictors
-# var_1pc_2014_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2014_comm_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2014_comm_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2014_comm_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
-```
 
 ### Bond ETFs
 
@@ -1527,42 +1511,7 @@ v10_2014_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 
 As with the other two sets of regressors, the results here show that the multivariate predictions are of similar quality to the predictions from the univariate model. 
 
-```{r}
-# iShares 1-3 Year Treasury Bond Fund (SHY)
-# iShares 7-10 Year Treasury Bond Fund (IEF)
-# iShares 20+ Year Treasury Bond Fund (TLT)
-# iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
-# 1%, 5%, 10% VaR - 2014 - 4th set of predictors
-# var_1pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2014_bond_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2014_bond_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2014_bond_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
-```
-
-### All ETFs
-
-```{r}
-# Call the above function
-v1_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2014_all_etf.csv", 0.01)
-v5_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2014_all_etf.csv", 0.05)
-v10_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2014_all_etf.csv", 0.10)
-```
-
-Including all the ETFs as regressors provides a multivariate forecast with similar accuracy to that of the univariate model. 
-
-```{r}
-# 1%, 5%, 10% VaR - 2014 - 5th set of predictors
-# var_1pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2014_all_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2014_all_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2014_all_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
-```
-
-
-## 2016 Ending
+## 2016 Test Period
 
 ### U.S. ETFs
 
@@ -1575,15 +1524,6 @@ v10_2016_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_th
 
 As with the forecast in 2010 and 2014, including the U.S. ETFs as predictors in the multivariate model gives similar results to that of the univariate model.
 
-```{r}
-# 1%, 5%, 10% VaR - 2016 - 1st set of predictors
-# var_1pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2016_us_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2016_us_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2016_us_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
-```
-
 ### Global ETFs
 
 ```{r}
@@ -1595,25 +1535,6 @@ v10_2016_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 
 The global ETFs as predictors provide solid results as well.
 
-```{r}
-# 1%, 5%, 10% VaR - 2016 - 2nd set of predictors
-# var_1pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2016_glob_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2016_glob_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2016_glob_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
-```
-
-### Commodity ETFs
-
-```{r}
-# 1%, 5%, 10% VaR - 2016 - 3rd set of predictors
-# var_1pc_2016_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2016_comm_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2016_comm_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2016_comm_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
-```
 
 ### Bond ETFs
 
@@ -1625,52 +1546,6 @@ v10_2016_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_
 ```
 
 As with the U.S. and Global ETFs, the bond ETFs provide good results.
-
-```{r}
-# iShares 1-3 Year Treasury Bond Fund (SHY)
-# iShares 7-10 Year Treasury Bond Fund (IEF)
-# iShares 20+ Year Treasury Bond Fund (TLT)
-# iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
-# 1%, 5%, 10% VaR - 2016 - 4th set of predictors
-# var_1pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2016_bond_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2016_bond_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2016_bond_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
-```
-
-### All ETFs
-
-```{r}
-# Call the above function
-v1_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2016_all_etf.csv", 0.01)
-v5_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2016_all_etf.csv", 0.05)
-v10_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2016_all_etf.csv", 0.10)
-```
-
-Including all ETFs as predictors yields good quality results for the 2016 test period.
-
-```{r}
-# 1%, 5%, 10% VaR - 2016 - 5th set of predictors
-# var_1pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2016_all_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2016_all_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2016_all_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
-```
-
-# Conclusions and Future Work
-
-The problem of how to predict a low quantile of a stock's log return when the training sample is substantially different from the test scenario is an enormously difficult problem. Almost axiomatically, the distribution is nonstationary over time. How is it possible to predict the return of an index like the S&P500 during a period of market turmoil such as the Great Recession? While the univariate CAViaR model performs comparatively well during times of stress, it performs about the same as the multivariate CAViaR model during more benign economic periods.
-
-This conclusion drawn from the above results might support the notion of combining the two models in some sort of a mixture model - aiming to use the basket of ETFs during good times, and use the CAViaR ARMA specification during bad times. The approach of using ETFs allows a prediction based on forward-looking expectations of fundamental factors. Indeed, ETFs are just baskets of individual stocks or bonds, and those securities are (in theory) based on rational expectations about future resources, market conditions, etc - the microfoundations of what drives our economy. The ARMA specification, while practically and statistically sound, is contradicted by economic theory and practice - the weak form of the efficient market hypothesis states that it is impossible to forecast future values of asset prices using past values. But perhaps this view is incomplete.
-
-Any model that attempts to capture relationships in the real world will only work until an omitted variable is found. The elegance of the multivariate CAViaR model is that it provides insight into why a prediction is wrong; the change in the angle between resultant vectors is a sensible measurement of economic changepoints (CHANGE). However, errors in the world are costly, and it's wishful thinking to say that explaining why the error occurred is sufficient.
-
-As such, for future work it's worth exploring the notion of weighting an ARMA-approach more heavily when predictions using fundamentals were too high, then not only would this after-the-fact recognition be achieved, but also a hierarchical model that captures fundamental relationships in the economy and potentially changes our understanding of asset prices in general - a synthesis between Keynes' animal spirits during a time of severe crisis; where a model cannot explain shifts, and a more rational world that explains other periods. In addition to significant predictive power because of the switching between the two worlds, there's also an elegant explanation; a way to explain changes in the usefulness of the underpinnings in the economy. Because of the flexibility of the model, it's entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred. 
-
-Additional future work involves developing theoretical guarantees on the parameters in the multivariate CAViaR model. One advantage of both the diffusion index model and the CAViaR model is that both have theorems about asymptotic normality and consistency [CONFIRM].
 
 
 # Code Appendix
