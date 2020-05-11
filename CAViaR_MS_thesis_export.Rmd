@@ -169,6 +169,7 @@ library(MTS)
 library(plot3D)
 library(citr)
 library(formattable)
+library(broom)
 
 # Set up working directory
 # setwd("~/Documents/GitHub/CaviaR")
@@ -492,7 +493,7 @@ mod_di = function (y, x, orig, m, tau, end = NULL, print_mdl = 0)
     }
   }
   SWfore <- list(coef = coef, yhat = yhat, MSE = MSE, loadings = M1, 
-      DFindex = Dindex)
+      DFindex = Dindex, model = mm)
 }
 
 ```
@@ -696,7 +697,7 @@ mod_di_wl = function (y, x, orig, m, tau, ar_tf = 1, p = 1, print_mdl = 0, model
     }
   }
   SWfore <- list(coef = coef, yhat = yhat, loss = loss, loadings = M1, 
-      DFindex = Dindex, name_vector = nvec)
+      DFindex = Dindex, name_vector = nvec, model = mm)
 }
 
 ```
@@ -1119,7 +1120,7 @@ exp_func = function(var_file, path, filename){
 #' @export - a plot and a table
 #'
 #' @examples - cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
-cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1, rowname = NULL, export_csv = 1, path, filename){
+cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1, rowname = NULL, export_csv = 0, path, filename, pm_filename, ms_filename, export_pm = 1, export_ms = 1){
   # Select data parameters, pull the data, and percent change the data
   df = diff_index_df(symbol_list = symbol_list, resp_var = resp_var, compl_case = compl_case, adj_close = adj_close, resp_adj_close = resp_adj_close, start_date = start_date, end_date = end_date, lag_pred = lag_pred)
   # Take the percent change of the data
@@ -1141,6 +1142,11 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   mv_fcst_art1 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art1[[1]], p = opt_pred_art1[[2]], tau = tau, ar_tf = 1, print_mdl = print_mdl)
   mv_fcst_art2 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art2[[1]], p = opt_pred_art2[[2]], tau = tau, ar_tf = 2, print_mdl = print_mdl)
   mv_fcst_art3 = mod_di_wl(pc_df[,1], pc_df[,-1], orig = test_orig, m = opt_pred_art3[[1]], p = opt_pred_art3[[2]], tau = tau, ar_tf = 3, print_mdl = print_mdl)
+  # Create summaries
+  m1 = mv_fcst$model
+  m2 = mv_fcst_art1$model
+  m3 = mv_fcst_art2$model
+  m4 = mv_fcst_art3$model
   # Calculate the number of predictions
   if (is.null(uv_list) == TRUE){
     # Print a warning
@@ -1189,15 +1195,33 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
   tables = pretty_tables(plot_mat, l_list, tau = tau, ntest = ntest)
   # Run the function for optimal p and m
   pm_table = pretty_pm(opt_pred_nl[[3]], opt_pred_art1[[4]], opt_pred_art2[[4]], opt_pred_art3[[4]])
+  # Export the optimal values of p and m
+  pm_out = rbind(opt_pred_nl[[3]], opt_pred_art1[[4]], opt_pred_art2[[4]], opt_pred_art3[[4]])
   # Export the matrix
   if (export_csv == 1){
+    # Export the plot matrix
     exp_func(var_file = plot_mat, path, filename)
   }
-  # Print the tables and the plot
+  if (export_pm == 1){
+    # Export the optimal p and m values
+    write.csv(pm_out, paste0(path, pm_filename, ".csv"))
+  }
+  # m1 = mv_fcst$model
+  # m2 = opt_pred_art1$model
+  # m3 = opt_pred_art2$model
+  # m4 = opt_pred_art3$model
+  if (export_ms == 1){
+    # Export all the model summaries
+    write.csv(tidy(m1), paste0(path, ms_filename, "_m1.csv"))
+    write.csv(tidy(m2), paste0(path, ms_filename, "_m2.csv"))
+    write.csv(tidy(m3), paste0(path, ms_filename, "_m3.csv"))
+    write.csv(tidy(m4), paste0(path, ms_filename, "_m4.csv"))
+  }
+  # Print the tables and the plots
   print(plot)
   print(tables)
   print(pm_table)
-  return(list(plot_mat, plot, l_list, tables, plot_mat_na, pm_table))
+  return(list(plot_mat, plot, l_list, tables, plot_mat_na, pm_table, export_pm, m1, m2, m3, m4))
 }
 ```
 
@@ -1255,64 +1279,47 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
 }
 ```
 
+# 5.10.2020 Problem Solving
+
+```{r}
+# v1_08_usetf_TEST = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents", filename = "var_1pc_2008_us_etf.csv", uv_list = v1_2008_usetf[[1]], export_csv = 0)
+# 
+# ?rq
+# summary(v1_08_usetf_TEST[[8]])
+# abc = tidy(v1_08_usetf_TEST[[8]])
+# write.csv(tidy(v1_08_usetf_TEST[[8]]),"/Users/stevenmoen/Documents/ms1.csv")
+
+
+# ?write.csv
+# write.csv(v1_08_usetf_TEST[[7]],"/Users/stevenmoen/Documents/test_opt_param.csv")
+```
+
+```{r}
+# cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1, rowname = NULL, export_csv = 0, path, filename, pm_filename, ms_filename, export_pm = 1, export_ms = 1){
+
+# This will see if the model export is ready for primetime
+# v1_08_usetf_bigtest = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2008_us_etf.csv", pm_filename = "var_1pc_2008_us_etf_pm", ms_filename = "var_1pc_2008_us_etf_ms", uv_list = v1_2008_usetf[[1]])
+```
+
 
 ## 2008 Ending
 
 ### U.S. ETFs
 
 ```{r}
-# return(list(plot_mat, plot, l_list, tables))
-
-# Call the above function
-v1_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
-# pretty_tables(v1_2008_usetf[[1]], v1_2008_usetf[[3]], tau = 0.01, ntest = 250)
-v5_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2008_us_etf.csv", 0.05)
-v10_2008_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2008_us_etf.csv", 0.10)
-
-# head(v10_2008_usetf[[1]])
-# v10_2008_usetf
-```
-
-The results for the U.S. ETFs clearly show that the univariate model outperforms the multivariate model during the great recession.
-
-```{r}
 # 1%, 5%, 10% VaR - 2008 - 1st set of predictors
-# var_1pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2008_us_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2008_us_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2008_us_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
+var_1pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2008_us_etf.csv", pm_filename = "var_1pc_2008_us_etf_pm", ms_filename = "var_1pc_2008_us_etf_ms", uv_list = v1_2008_usetf[[1]])
+var_5pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2008_us_etf.csv", pm_filename = "var_5pc_2008_us_etf_pm", ms_filename = "var_5pc_2008_us_etf_ms", uv_list = v5_2008_usetf[[1]])
+var_10pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2008_us_etf.csv", pm_filename = "var_10pc_2008_us_etf_pm", ms_filename = "var_10pc_2008_us_etf_ms", uv_list = v10_2008_usetf[[1]])
 ```
 
 ### Global ETFs
 
 ```{r}
-# Call the above function
-v1_2008_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2008_glob_etf.csv", 0.01)
-v5_2008_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2008_glob_etf.csv", 0.05)
-v10_2008_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_10pc_2008_glob_etf.csv", 0.10)
-```
-
-While the model with the global ETFs as predictors performs better than the model with U.S. ETFs, the univariate CAViaR model outperforms the multivariate model.
-
-```{r}
 # 1%, 5%, 10% VaR - 2008 - 2nd set of predictors
-# var_1pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2008_glob_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2008_glob_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2008_glob_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
-```
-
-### Commodity ETFs
-
-```{r}
-# 1%, 5%, 10% VaR - 2008 - 3rd set of predictors
-# var_1pc_2008_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2008_comm_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2008_comm_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2008_comm_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
+var_1pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2008_glob_etf.csv", pm_filename = "var_1pc_2008_glob_etf_pm", ms_filename = "var_1pc_2008_glob_etf_ms", uv_list = v1_2008_globetf[[1]])
+var_5pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2008_glob_etf.csv", pm_filename = "var_1pc_2008_glob_etf_pm", ms_filename = "var_1pc_2008_glob_etf_ms", uv_list = v5_2008_globetf[[1]])
+var_10pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2008_glob_etf.csv", pm_filename = "var_10pc_2008_glob_etf_pm", ms_filename = "var_10pc_2008_glob_etf_ms", uv_list = v10_2008_globetf[[1]])
 ```
 
 
@@ -1320,144 +1327,68 @@ While the model with the global ETFs as predictors performs better than the mode
 ### Bond ETFs
 
 ```{r}
-# Call the above function
-v1_2008_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_1pc_2008_bond_etf.csv", 0.01)
-v5_2008_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_5pc_2008_bond_etf.csv", 0.05)
-v10_2008_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_10pc_2008_bond_etf.csv", 0.10)
-```
-
-As with the previous two runs, the univariate model outperforms the multivariate model.
-
-```{r}
 # iShares 1-3 Year Treasury Bond Fund (SHY)
 # iShares 7-10 Year Treasury Bond Fund (IEF)
 # iShares 20+ Year Treasury Bond Fund (TLT)
 # iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
 # 1%, 5%, 10% VaR - 2008 - 4th set of predictors
-# var_1pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2008_bond_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2008_bond_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2008_bond_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
+var_1pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2008_bond_etf.csv", pm_filename = "var_1pc_2008_bond_etf_pm", ms_filename = "var_1pc_2008_bond_etf_ms", uv_list = v1_2008_bondetf[[1]])
+var_5pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2008_bond_etf.csv", pm_filename = "var_5pc_2008_bond_etf_pm", ms_filename = "var_5pc_2008_bond_etf_ms", uv_list = v5_2008_bondetf[[1]])
+var_10pc_2008_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2008_bond_etf.csv", pm_filename = "var_10pc_2008_bond_etf_pm", ms_filename = "var_10pc_2008_bond_etf_ms", uv_list = v10_2008_bondetf[[1]])
 ```
 
 ### All ETFs
 
 ```{r}
-# Call the above function
-v1_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2008_all_etf.csv", 0.01)
-v5_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2008_all_etf.csv", 0.05)
-v10_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2008_all_etf.csv", 0.10)
-```
-
-While the inclusion of more explanatory variables seems to help the forecast, the univariate model outperforms the multivariate model.
-
-```{r}
 # 1%, 5%, 10% VaR - 2008 - 5th set of predictors
-# var_1pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2008_all_etf.csv", uv_list = var_1pc_2008_usetf[[1]])
-
-# var_5pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2008_all_etf.csv", uv_list = var_5pc_2008_usetf[[1]])
-
-# var_10pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2008_all_etf.csv", uv_list = var_10pc_2008_usetf[[1]])
+var_1pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2008_all_etf.csv", pm_filename = "var_1pc_2008_all_etf_pm", ms_filename = "var_1pc_2008_all_etf_ms", uv_list = v1_2008_alletf[[1]])
+var_5pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2008_all_etf.csv", pm_filename = "var_5pc_2008_all_etf_pm", ms_filename = "var_5pc_2008_all_etf_ms", uv_list = v5_2008_alletf[[1]])
+var_10pc_2008_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2008_all_etf.csv", pm_filename = "var_10pc_2008_all_etf_pm", ms_filename = "var_10pc_2008_all_etf_ms", uv_list = v10_2008_alletf[[1]])
 ```
 
 ## 2010 Ending
 
+
 ### U.S. ETFs
 
 ```{r}
-# Call the above function
-v1_2010_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2010_us_etf.csv", 0.01)
-v5_2010_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2010_us_etf.csv", 0.05)
-v10_2010_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2010_us_etf.csv", 0.10)
-```
-
-The results are much better for the multivariate model here during a more benign period.
-
-```{r}
 # 1%, 5%, 10% VaR - 2010 - 1st set of predictors
-# var_1pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2010_us_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2010_us_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2010_us_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
+var_1pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2010_us_etf.csv", pm_filename = "var_1pc_2010_us_etf_pm", ms_filename = "var_1pc_2010_us_etf_ms", uv_list = v1_2010_usetf[[1]])
+var_5pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2010_us_etf.csv", pm_filename = "var_5pc_2010_us_etf_pm", ms_filename = "var_5pc_2010_us_etf_ms", uv_list = v5_2010_usetf[[1]])
+var_10pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2010_us_etf.csv", pm_filename = "var_10pc_2010_us_etf_pm", ms_filename = "var_10pc_2010_us_etf_ms", uv_list = v10_2010_usetf[[1]])
 ```
 
 ### Global ETFs
 
 ```{r}
-# Call the above function
-v1_2010_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2010_glob_etf.csv", 0.01)
-v5_2010_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2010_glob_etf.csv", 0.05)
-v10_2010_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_10pc_2010_glob_etf.csv", 0.10)
-```
-
-As with the U.S. ETFs, the results are better.
-
-```{r}
 # 1%, 5%, 10% VaR - 2010 - 2nd set of predictors
-# var_1pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2010_glob_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2010_glob_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2010_glob_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
+var_1pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2010_glob_etf.csv", pm_filename = "var_1pc_2010_glob_etf_pm", ms_filename = "var_1pc_2010_glob_etf_ms", uv_list = v1_2010_globetf[[1]])
+var_5pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2010_glob_etf.csv", pm_filename = "var_1pc_2010_glob_etf_pm", ms_filename = "var_1pc_2010_glob_etf_ms", uv_list = v5_2010_globetf[[1]])
+var_10pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2010_glob_etf.csv", pm_filename = "var_10pc_2010_glob_etf_pm", ms_filename = "var_10pc_2010_glob_etf_ms", uv_list = v10_2010_globetf[[1]])
 ```
 
-### Commodity ETFs
 
-```{r}
-# 1%, 5%, 10% VaR - 2010 - 3rd set of predictors
-# var_1pc_2010_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2010_comm_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2010_comm_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2010_comm_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
-```
 
 ### Bond ETFs
-
-```{r}
-# Call the above function
-v1_2010_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_1pc_2010_bond_etf.csv", 0.01)
-v5_2010_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_5pc_2010_bond_etf.csv", 0.05)
-v10_2010_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_10pc_2010_bond_etf.csv", 0.10)
-```
-
-As with the previous two runs, the results from the bond ETFs are better than those from 2008.
 
 ```{r}
 # iShares 1-3 Year Treasury Bond Fund (SHY)
 # iShares 7-10 Year Treasury Bond Fund (IEF)
 # iShares 20+ Year Treasury Bond Fund (TLT)
 # iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
 # 1%, 5%, 10% VaR - 2010 - 4th set of predictors
-# var_1pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2010_bond_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2010_bond_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2010_bond_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
+var_1pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2010_bond_etf.csv", pm_filename = "var_1pc_2010_bond_etf_pm", ms_filename = "var_1pc_2010_bond_etf_ms", uv_list = v1_2010_bondetf[[1]])
+var_5pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2010_bond_etf.csv", pm_filename = "var_5pc_2010_bond_etf_pm", ms_filename = "var_5pc_2010_bond_etf_ms", uv_list = v5_2010_bondetf[[1]])
+var_10pc_2010_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2010_bond_etf.csv", pm_filename = "var_10pc_2010_bond_etf_pm", ms_filename = "var_10pc_2010_bond_etf_ms", uv_list = v10_2010_bondetf[[1]])
 ```
 
 ### All ETFs
 
 ```{r}
-# Call the above function
-v1_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2010_all_etf.csv", 0.01)
-v5_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2010_all_etf.csv", 0.05)
-v10_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2010_all_etf.csv", 0.10)
-```
-
-The inclusion of all predictors reveals similar results for the multivariate models as the previous forecasts; the results are generally in-line the univariate CAViaR model.
-
-```{r}
 # 1%, 5%, 10% VaR - 2010 - 5th set of predictors
-# var_1pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2010_all_etf.csv", uv_list = var_1pc_2010_usetf[[1]])
-
-# var_5pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2010_all_etf.csv", uv_list = var_5pc_2010_usetf[[1]])
-
-# var_10pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2010_all_etf.csv", uv_list = var_10pc_2010_usetf[[1]])
+var_1pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2010_all_etf.csv", pm_filename = "var_1pc_2010_all_etf_pm", ms_filename = "var_1pc_2010_all_etf_ms", uv_list = v1_2010_alletf[[1]])
+var_5pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2010_all_etf.csv", pm_filename = "var_5pc_2010_all_etf_pm", ms_filename = "var_5pc_2010_all_etf_ms", uv_list = v5_2010_alletf[[1]])
+var_10pc_2010_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2010_all_etf.csv", pm_filename = "var_10pc_2010_all_etf_pm", ms_filename = "var_10pc_2010_all_etf_ms", uv_list = v10_2010_alletf[[1]])
 ```
 
 ## 2014 Ending
@@ -1465,209 +1396,95 @@ The inclusion of all predictors reveals similar results for the multivariate mod
 ### U.S. ETFs
 
 ```{r}
-# Call the above function
-v1_2014_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2014_us_etf.csv", 0.01)
-v5_2014_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2014_us_etf.csv", 0.05)
-v10_2014_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2014_us_etf.csv", 0.10)
-```
-
-As with the results in 2014, the results from the U.S. ETFs shows a similar quality of predictions.
-
-```{r}
 # 1%, 5%, 10% VaR - 2014 - 1st set of predictors
-# var_1pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2014_us_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2014_us_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2014_us_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
+var_1pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2014_us_etf.csv", pm_filename = "var_1pc_2014_us_etf_pm", ms_filename = "var_1pc_2014_us_etf_ms", uv_list = v1_2014_usetf[[1]])
+var_5pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2014_us_etf.csv", pm_filename = "var_5pc_2014_us_etf_pm", ms_filename = "var_5pc_2014_us_etf_ms", uv_list = v5_2014_usetf[[1]])
+var_10pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2014_us_etf.csv", pm_filename = "var_10pc_2014_us_etf_pm", ms_filename = "var_10pc_2014_us_etf_ms", uv_list = v10_2014_usetf[[1]])
 ```
 
 ### Global ETFs
 
 ```{r}
-# Call the above function
-v1_2014_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2014_glob_etf.csv", 0.01)
-v5_2014_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2014_glob_etf.csv", 0.05)
-v10_2014_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_10pc_2014_glob_etf.csv", 0.10)
-```
-
-The results show that the multivariate predictions are of similar quality to the predictions from the univariate model. 
-
-```{r}
 # 1%, 5%, 10% VaR - 2014 - 2nd set of predictors
-# var_1pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2014_glob_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2014_glob_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2014_glob_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
+var_1pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2014_glob_etf.csv", pm_filename = "var_1pc_2014_glob_etf_pm", ms_filename = "var_1pc_2014_glob_etf_ms", uv_list = v1_2014_globetf[[1]])
+var_5pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2014_glob_etf.csv", pm_filename = "var_1pc_2014_glob_etf_pm", ms_filename = "var_1pc_2014_glob_etf_ms", uv_list = v5_2014_globetf[[1]])
+var_10pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2014_glob_etf.csv", pm_filename = "var_10pc_2014_glob_etf_pm", ms_filename = "var_10pc_2014_glob_etf_ms", uv_list = v10_2014_globetf[[1]])
 ```
 
-### Commodity ETFs
 
-```{r}
-# 1%, 5%, 10% VaR - 2014 - 3rd set of predictors
-# var_1pc_2014_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2014_comm_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2014_comm_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2014_comm_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
-```
 
 ### Bond ETFs
-
-```{r}
-# Call the above function
-v1_2014_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_1pc_2014_bond_etf.csv", 0.01)
-v5_2014_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_5pc_2014_bond_etf.csv", 0.05)
-v10_2014_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_10pc_2014_bond_etf.csv", 0.10)
-```
-
-As with the other two sets of regressors, the results here show that the multivariate predictions are of similar quality to the predictions from the univariate model. 
 
 ```{r}
 # iShares 1-3 Year Treasury Bond Fund (SHY)
 # iShares 7-10 Year Treasury Bond Fund (IEF)
 # iShares 20+ Year Treasury Bond Fund (TLT)
 # iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
 # 1%, 5%, 10% VaR - 2014 - 4th set of predictors
-# var_1pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2014_bond_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2014_bond_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2014_bond_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
+var_1pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2014_bond_etf.csv", pm_filename = "var_1pc_2014_bond_etf_pm", ms_filename = "var_1pc_2014_bond_etf_ms", uv_list = v1_2014_bondetf[[1]])
+var_5pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2014_bond_etf.csv", pm_filename = "var_5pc_2014_bond_etf_pm", ms_filename = "var_5pc_2014_bond_etf_ms", uv_list = v5_2014_bondetf[[1]])
+var_10pc_2014_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2014_bond_etf.csv", pm_filename = "var_10pc_2014_bond_etf_pm", ms_filename = "var_10pc_2014_bond_etf_ms", uv_list = v10_2014_bondetf[[1]])
 ```
 
 ### All ETFs
 
 ```{r}
-# Call the above function
-v1_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2014_all_etf.csv", 0.01)
-v5_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2014_all_etf.csv", 0.05)
-v10_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2014_all_etf.csv", 0.10)
-```
-
-Including all the ETFs as regressors provides a multivariate forecast with similar accuracy to that of the univariate model. 
-
-```{r}
 # 1%, 5%, 10% VaR - 2014 - 5th set of predictors
-# var_1pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2014_all_etf.csv", uv_list = var_1pc_2014_usetf[[1]])
-
-# var_5pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2014_all_etf.csv", uv_list = var_5pc_2014_usetf[[1]])
-
-# var_10pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2014_all_etf.csv", uv_list = var_10pc_2014_usetf[[1]])
+var_1pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2014_all_etf.csv", pm_filename = "var_1pc_2014_all_etf_pm", ms_filename = "var_1pc_2014_all_etf_ms", uv_list = v1_2014_alletf[[1]])
+var_5pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2014_all_etf.csv", pm_filename = "var_5pc_2014_all_etf_pm", ms_filename = "var_5pc_2014_all_etf_ms", uv_list = v5_2014_alletf[[1]])
+var_10pc_2014_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2014_all_etf.csv", pm_filename = "var_10pc_2014_all_etf_pm", ms_filename = "var_10pc_2014_all_etf_ms", uv_list = v10_2014_alletf[[1]])
 ```
 
 
 ## 2016 Ending
 
+
 ### U.S. ETFs
 
 ```{r}
-# Call the above function
-v1_2016_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2016_us_etf.csv", 0.01)
-v5_2016_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_5pc_2016_us_etf.csv", 0.05)
-v10_2016_usetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_10pc_2016_us_etf.csv", 0.10)
-```
-
-As with the forecast in 2010 and 2014, including the U.S. ETFs as predictors in the multivariate model gives similar results to that of the univariate model.
-
-```{r}
 # 1%, 5%, 10% VaR - 2016 - 1st set of predictors
-# var_1pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2016_us_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2016_us_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2016_us_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
+var_1pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2016_us_etf.csv", pm_filename = "var_1pc_2016_us_etf_pm", ms_filename = "var_1pc_2016_us_etf_ms", uv_list = v1_2016_usetf[[1]])
+var_5pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_5pc_2016_us_etf.csv", pm_filename = "var_5pc_2016_us_etf_pm", ms_filename = "var_5pc_2016_us_etf_ms", uv_list = v5_2016_usetf[[1]])
+var_10pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_10pc_2016_us_etf.csv", pm_filename = "var_10pc_2016_us_etf_pm", ms_filename = "var_10pc_2016_us_etf_ms", uv_list = v10_2016_usetf[[1]])
 ```
 
 ### Global ETFs
 
 ```{r}
-# Call the above function
-v1_2016_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2016_glob_etf.csv", 0.01)
-v5_2016_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2016_glob_etf.csv", 0.05)
-v10_2016_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_10pc_2016_glob_etf.csv", 0.10)
-```
-
-The global ETFs as predictors provide solid results as well.
-
-```{r}
 # 1%, 5%, 10% VaR - 2016 - 2nd set of predictors
-# var_1pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2016_glob_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2016_glob_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2016_glob_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
+var_1pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2016_glob_etf.csv", pm_filename = "var_1pc_2016_glob_etf_pm", ms_filename = "var_1pc_2016_glob_etf_ms", uv_list = v1_2016_globetf[[1]])
+var_5pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2016_glob_etf.csv", pm_filename = "var_1pc_2016_glob_etf_pm", ms_filename = "var_1pc_2016_glob_etf_ms", uv_list = v5_2016_globetf[[1]])
+var_10pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2016_glob_etf.csv", pm_filename = "var_10pc_2016_glob_etf_pm", ms_filename = "var_10pc_2016_glob_etf_ms", uv_list = v10_2016_globetf[[1]])
 ```
 
-### Commodity ETFs
 
-```{r}
-# 1%, 5%, 10% VaR - 2016 - 3rd set of predictors
-# var_1pc_2016_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_1pc_2016_comm_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_5pc_2016_comm_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_comm_etf = cav_simul(c("DBA", "DBC", "DBE", "DBB"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_comm_ETF_runs/", filename = "var_10pc_2016_comm_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
-```
 
 ### Bond ETFs
-
-```{r}
-# Call the above function
-v1_2016_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_1pc_2016_bond_etf.csv", 0.01)
-v5_2016_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_5pc_2016_bond_etf.csv", 0.05)
-v10_2016_bondetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/","var_10pc_2016_bond_etf.csv", 0.10)
-```
-
-As with the U.S. and Global ETFs, the bond ETFs provide good results.
 
 ```{r}
 # iShares 1-3 Year Treasury Bond Fund (SHY)
 # iShares 7-10 Year Treasury Bond Fund (IEF)
 # iShares 20+ Year Treasury Bond Fund (TLT)
 # iShares iBoxx $ Investment Grade Corporate Bond ETF (LQD)
-
 # 1%, 5%, 10% VaR - 2016 - 4th set of predictors
-# var_1pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2016_bond_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2016_bond_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2016_bond_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
+var_1pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_1pc_2016_bond_etf.csv", pm_filename = "var_1pc_2016_bond_etf_pm", ms_filename = "var_1pc_2016_bond_etf_ms", uv_list = v1_2016_bondetf[[1]])
+var_5pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_5pc_2016_bond_etf.csv", pm_filename = "var_5pc_2016_bond_etf_pm", ms_filename = "var_5pc_2016_bond_etf_ms", uv_list = v5_2016_bondetf[[1]])
+var_10pc_2016_bond_etf = cav_simul(c("SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 4, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_bond_ETF_runs/", filename = "var_10pc_2016_bond_etf.csv", pm_filename = "var_10pc_2016_bond_etf_pm", ms_filename = "var_10pc_2016_bond_etf_ms", uv_list = v10_2016_bondetf[[1]])
 ```
 
 ### All ETFs
 
 ```{r}
-# Call the above function
-v1_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2016_all_etf.csv", 0.01)
-v5_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2016_all_etf.csv", 0.05)
-v10_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2016_all_etf.csv", 0.10)
+# 1%, 5%, 10% VaR - 2016 - 5th set of predictors
+var_1pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2016_all_etf.csv", pm_filename = "var_1pc_2016_all_etf_pm", ms_filename = "var_1pc_2016_all_etf_ms", uv_list = v1_2016_alletf[[1]])
+var_5pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2016_all_etf.csv", pm_filename = "var_5pc_2016_all_etf_pm", ms_filename = "var_5pc_2016_all_etf_ms", uv_list = v5_2016_alletf[[1]])
+var_10pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2016_all_etf.csv", pm_filename = "var_10pc_2016_all_etf_pm", ms_filename = "var_10pc_2016_all_etf_ms", uv_list = v10_2016_alletf[[1]])
 ```
 
-Including all ETFs as predictors yields good quality results for the 2016 test period.
 
 ```{r}
-# 1%, 5%, 10% VaR - 2016 - 5th set of predictors
-# var_1pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_1pc_2016_all_etf.csv", uv_list = var_1pc_2016_usetf[[1]])
-
-# var_5pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_5pc_2016_all_etf.csv", uv_list = var_5pc_2016_usetf[[1]])
-
-# var_10pc_2016_all_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE", "JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC", "SHY", "IEF", "TLT", "LQD"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 23, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/", filename = "var_10pc_2016_all_etf.csv", uv_list = var_10pc_2016_usetf[[1]])
+# v1_2016_alletf[[1]]
 ```
-
-# Conclusions and Future Work
-
-The problem of how to predict a low quantile of a stock's log return when the training sample is substantially different than the test scenario is an enormously difficult problem. Almost axiomatically, the distribution is nonstationary over time. How is it possible to predict the return of an index like the S&P500 during a period of market turmoil such as the great recession? While the CAViaR model performs comparatively well during times of stress, it performs about the same as the multivariate model during more benign economic periods.
-
-This conclusion drawn from the above results might support the notion of combining the two models in some sort of a mixture model - aiming to use the basket of ETFs during good times, and use the CAViaR ARMA specification during bad times. The approach of using ETFs allows a prediction based on forward-looking expectations of fundamental factors. Indeed, ETFs are just baskets of individual stocks or bonds, and those securities are (in theory) based on rational expectations about future resources, market conditions, etc - the microfoundations of what drives our economy. The ARMA specification, while practically and statistically sound, is contradicted by economic theory and practice - the weak form of the efficient market hypothesis states that it is impossible to forecast future values of asset prices using past values. But perhaps this view is incomplete.
-
-Any model that attempts to capture relationships in the real world will only work until an omitted variable is found. The elegance of the multivariate CAViaR model is that it provides insight into why a prediction is wrong; the change in the angle between resultant vectors is a sensible measurement of economic changepoints (CHANGE). However, errors in the world are costly, and it's wishful thinking to say that explaining why the error occurred is sufficient.
-
-As such, for future work it's worth exploring the notion of weighting an ARMA-approach more heavily when predictions using fundamentals were too high, then not only would this after-the-fact recognition be achieves, but also a hierarchical model that captures fundamental relationships in the economy and potentially changes our understanding of asset prices in general - a synthesis between Keynes' animal spirits during a time of severe crisis; where a model cannot explain shifts, and a more rational world that explains other periods. In addition to significant predictive power because of the switching between the two worlds, there's also an elegant explanation; a way to explain changes in the usefulness of the underpinnings in the economy. Because of the flexibility of the model, it's entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred. 
-
-Additional future work involves developing theoretical guarantees on the parameters in the multivariate CAViaR model. One advantage of both the diffusion index model and the CAViaR model is that both have theorems about asymptotic normality and consistency [CONFIRM].
 
 
 # Code Appendix

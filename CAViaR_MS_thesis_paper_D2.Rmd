@@ -2,7 +2,7 @@
 title: "Multivariate CAViaR"
 subtitle: "An Insightful Approach to Risk Modeling"
 author: "Steven Moen's M.S. Thesis"
-date: "Saturday, May 9th, 2020"
+date: "Sunday, May 10th, 2020"
 output:
   pdf_document: default
   html_notebook: default
@@ -28,13 +28,13 @@ While there are other ways to understand and measure downside risk, a commonly a
 
 
 
-Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation [@Richardson2005]. A popular approach to modeling VaR called RiskMetrics was introduced by J.P. Morgan in 1994 and upgraded in 1996 [???]
+Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation [@Richardson2005]. A popular approach to modeling VaR called RiskMetrics was introduced by J.P. Morgan in 1994 and upgraded in 1996... [??? - FINISH]
 
-According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” [@Engle2004]. They propose a framework called CAViaR that directly forecasts the VaR quantile directly using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions [@Portnoy1991].
+According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” [@Engle2004]. They propose a framework called CAViaR that directly forecasts the VaR quantile using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions [@Portnoy1991].
 
 # Methods Used
 
-A common problem in statistical analysis occurs when a training sample is significantly different from that of the test sample. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Proctor & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the second quarter of 2004, but PG was fairly stable. How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
+A common problem in statistical analysis occurs when a training sample is significantly different from that of the test sample. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Procter & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the second quarter of 2004, but PG was fairly stable. How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
 
 Thus, the idea of combining stocks into a multivariate setting to capture correlations and better forecast risk was formed. A natural choice appeared to be the diffusion index model, originally developed by Stock and Watson for predicting conditional means [@Stock2002; @Stock2002a]. The model for forecasting the conditional mean is specified below.
 
@@ -184,9 +184,7 @@ When analyzing real data, it's hard to verify any assumptions exactly, but one t
 
 ## Asymptotic Normality
 
-Also per
-
-[FILL IN]
+Also per... [FINISH ???]
 
 # Data Used
 
