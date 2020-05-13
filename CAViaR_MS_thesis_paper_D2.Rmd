@@ -1423,7 +1423,7 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
 
 For the sake of brevity, the results with only U.S. ETFs, global ETFs, or bonds is included in a later results section. The results are similar to the results below. To test how well the models do at different VaR levels, 1%, 5%, and 10% are tested.
 
-## 2008 Test Period - All ETFs
+## 2008 Test Period - All ETFs 
 
 ### 1% VaR
 
