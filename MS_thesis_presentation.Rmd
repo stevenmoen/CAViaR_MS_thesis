@@ -1,0 +1,250 @@
+---
+title: "Multivariate CAViaR"
+subtitle: "An Insightful Approach to Risk Modeling"
+author: "Steven Moen's M.S. Thesis"
+date: "Wednesday, May 13th, 2020"
+output: beamer_presentation
+bibliography: thesis_bibliography.bib
+link-citations: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+```
+
+## Roadmap
+
+- Abstract
+- Background and Introduction
+- Bullet 3
+
+## Abstract
+
+- This thesis builds upon previous literature for modeling value-at-risk (defined as an x% quantile of an asset's daily returns) using non-linear ARMA terms by adding exchange-traded funds (ETFs) as explanatory variables that are combined into principal component vectors at the forecast origin.
+- Combining these principal component vectors with transformations of lagged autoregressive response variables results in a model that produces similar predictive accuracy during periods of relatively low volatility along with more insight into the drivers of the changes in the response variable. 
+- In fact, one insight gained from the new model is a method of detecting changepoints in the economy by measuring the angle between resultant vectors calculated from the combination of principal component vectors during different time periods. 
+- This method, along with analysis of the statistical significance of the lagged ETFs, allows for insight into changes in the underlying economy.
+
+## Background and Introduction
+
+- When modeling financial time series, simply considering the mean and the variance is insufficient for an accurate depiction of the returns - stock returns are well-known for having fat tails and are difficult to model using a normal distribution [@Fama1965]. 
+- In fact, modeling a 1% or a 5% quantile of daily returns is a better way to understand and predict what happens on the worst trading days and to give a clearer picture of what might happen during a downturn. 
+- Indeed, finance theory suggests that a primary reason why the S&P 500, which is a market-capitalization weighted index composed of the 500-largest publicly traded companies in the United States, has earned a 6.8% inflation-adjusted pre-tax return with dividend reinvestment from January 1871 through April 2020 [@PK2019] is because of the risk of a significant downturn. 
+
+## Background and Introduction
+
+- Kerry Pechter at Forbes describes it as a premium for the fact that "stocks are riskier" and "more prone to price fluctuations in the short run" compared to lower risk investments [@Pechter2020]. 
+- A portfolio manager must indeed consider the long-run picture; a small difference in the annual rate of return can make an enormous difference in the ending value of investments.
+- However, focusing entirely on long-run value generation is not the only consideration a prudent manager ought to make. 
+
+## Background and Introduction
+
+- While forecasting stock returns in the long-run is challenging, the performance of indices such as the S&P 500, despite seemingly existential threats such as the World Wars and the Great Depression, does give some confidence to investors who try to focus on long-run value generation. 
+- Ignoring the short-run reminds one of John Maynard Keynes' famous maxim that the "long run is a misleading guide to current affairs" because "in the long run we are all dead" [@Keynes1923], and moreover, the short-run impact of a strategy is often more difficult to understand than the long-run results, and potentially more precarious. 
+- An investment manager using financial leverage to magnify returns (positive or negative) could be left in dire straits if their investments fell rapidly, despite a sound long-run strategy.
+
+## Background and Introduction
+
+- While there are other ways to understand and measure downside risk, a commonly accepted method is using value-at-risk (VaR). 
+- The metric is understood as follows: a one-day 1% VaR of -10 million dollars for a portfolio means that the portfolio will lose at least 10 million of its value on the 1% worst trading days. 
+- A major advantage of VaR is that it distills a distribution of returns into one number. 
+- As such, VaR is often used in stress testing by regulatory agencies in the United States, the United Kingdom, and Europe [@Holton2014]. 
+
+## Background and Introduction
+
+- A popular approach to modeling VaR called RiskMetrics [@Longerstaey1996] was introduced by J.P. Morgan in 1994 and re-relased in 1996. 
+- The model assumed that a "portfolio or any asset's returns follow a normal distribution over time" and used this along with the "variance-covariance method" to calculate VaR [@Investopedia2019]. 
+- While this was certainly a step forward at the time, perhaps the model's greatest downfall is the pretense of knowledge that modeling the distribution of returns in entirety is possible. 
+
+## Background and Introduction
+
+- The elegant simplicity of using a normal distribution is appealing - only having to estimate the mean and the variance to get a universal picture of returns is certainly appealing, and perhaps necessary in a time of comparatively limited computing power. 
+- Having said that, modeling the big picture while making clear assumptions about the nature of returns has its' perks, and is perhaps adventagous over altenatives for modeling VaR. 
+- Indeed, many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation [@Richardson2005]. 
+
+## Background and Introduction
+
+- According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” [@Engle2004]. 
+- They propose a framework called CAViaR that directly forecasts the VaR quantile using a conditional autoregressive quantile specification. 
+- This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions [@Portnoy1991].
+
+## Background and Introduction
+
+- The appeal of this model is that it combines the crisp statistical assumptions with the flexibility required to model financial returns. 
+- However, the model still runs into issues when a training sample is totally unrepresentative of the testing period - a common problem in statistical analysis. 
+- Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Procter & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). 
+
+## Background and Introduction
+
+- A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. 
+- Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. 
+- One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the second quarter of 2004, but PG was fairly stable. 
+- How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
+
+## Procter & Gamble CAViaR Results
+
+```{r}
+# Read in relevant libraries
+library(microbenchmark)
+library(data.table)
+library(quantmod)
+library(ggplot2)
+library(tseries)
+library(zoo)
+library(magrittr)
+library(dplyr)
+library(kableExtra)
+library(formattable)
+library(quantreg)
+library(MTS)
+library(plot3D)
+library(citr)
+library(formattable)
+
+
+# Set up working directory
+# setwd("~/Documents/GitHub/CaviaR")
+
+# source('caviar_SM.R')
+source('~/Documents/GitHub/CaviaR/caviar_SM.R')
+```
+
+```{r}
+# Compare the accuracy of the model runs
+acc_df = as.data.frame(matrix(0, nrow =4, ncol = 2))
+rownames(acc_df) <- c("VaR Exceeded", "VaR Not Exceeded", "VaR Break Rate", "Theoretical VaR")
+colnames(acc_df) <- c("AMZN", "PG")
+
+# Let's create graphs for the Amazon data
+for (i in 1){
+  # Export the data
+  amzn_dat <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/amzn_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  print(plot.xts(amzn_dat[,1:2], col = c("red", "black"), lty = c(2,1), main = paste0("Log Return from AMZN Adj. Close vs. Fcst. VaR, Run ", i),grid.col = NA, legend.loc = "bottomleft"))
+}
+
+# Calculate the AMZN error
+amzn_breach = ifelse(amzn_dat$Act_Return > amzn_dat$Fcst_VaR, 0, 1)
+# Put the data into a data frame
+acc_df[1,1] = sum(amzn_breach)
+acc_df[2,1] = length(amzn_breach) - sum(amzn_breach)
+acc_df[3,1] = sum(amzn_breach)/length(amzn_breach)
+acc_df[4,1] = 0.01
+```
+
+## Amazon CAViaR Results
+
+```{r}
+# Let's create graphs for the PG data
+for (i in 1){
+  # Import the data
+  pg_dat <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/PG_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  print(plot.xts(pg_dat[,1:2], col = c("red", "black"), lty = c(2,1), main = paste0("Log Return from PG Adj. Close vs. Fcst. VaR, Run Number ", i),grid.col = NA, legend.loc = "bottomleft"))
+}
+
+# Calculate the PG error
+pg_breach = ifelse(pg_dat$Act_Return > pg_dat$Fcst_VaR, 0, 1)
+# Put the data into a data frame
+acc_df[1,2] = sum(pg_breach)
+acc_df[2,2] = length(pg_breach) - sum(pg_breach)
+acc_df[3,2] = sum(pg_breach)/length(pg_breach)
+acc_df[4,2] = 0.01
+```
+
+## Summary Table
+
+```{r}
+acc_df[-(1:2),] %>% kable(caption = "Accuracy of VaR Forecast for PG Over Last 200 Trading Days in 2008", digits = 3) %>% kable_styling(full_width = F) %>% footnote(general = "Tested Using the Symmetric Absolute Value Model")
+
+```
+
+## Amazon and Procter & Gamble Summary
+
+- From these results, the idea of combining stocks into a multivariate setting to capture correlations and better forecast risk was formed. 
+- A natural choice appeared to be the diffusion index model, originally developed by Stock and Watson for predicting conditional means [@Stock2002; @Stock2002a]. 
+- The model for forecasting the conditional mean is specified later.
+
+## Diffusion Index Model
+
+- A useful means of predicting stock movements in the future is the Stock and Watson diffusion index. 
+- The model is outlined below, which is adapted from Multivariate Time Series Analysis With R and Financial Applications by Ruey S. Tsay [@Tsay2014].
+
+## Diffusion Index Model
+
+There are two relevant equations, $\boldsymbol{z_t} = \boldsymbol{Lf_t} + \boldsymbol{\epsilon_t}$ and $y_{t+h} = \boldsymbol{\beta^\prime f_t} + \boldsymbol{e_{t+h}}$.
+
+## Diffusion Index Model
+
+In the first equation, $\boldsymbol{z_t} = (z_{1t}, ...., z_{kt})^\prime$ is an observed time series with mean 0, $\boldsymbol{f_t}$ is an m-dimensional vector of common factors with mean 0 and identity covariance matrix, $\boldsymbol{L}$ is a $k \times m$ loading matrix, and $\boldsymbol{\epsilon_t}$ is an independent and identically distributed (i.i.d.) sequence of random vectors with mean 0 and covariance matrix $\boldsymbol{\Sigma_e}$.
+
+## Diffusion Index Model
+
+In the second equation, which represents the h-step ahead prediction based on $\boldsymbol{f_t}$, $y_t$ is the scalar time series of interest, $h$ is the forecast horizon, $\boldsymbol{\beta}$ represents the vector of coefficients, and $e_t$ is a sequence of uncorrelated random variables with mean 0 and constant variance. 
+
+## Diffusion Index Model
+
+To model the data, principal component analysis is performed on the covariates described below to obtain an estimate of $\boldsymbol{f_t}$. When modeling the conditional mean, the $\boldsymbol{\beta}$ coefficients are estimated using ordinary least squares, however in the specification below they are not. A specific formulation mentioned in the textbook is as follows, where the individuals diffusion indices are given by $f_it$, and the goal is a one-step ahead prediction of $y_t$:
+
+$$
+y_{t+1} = \beta_0 + \sum_{i=1}^m \beta_i f_{it} + e_t.
+$$
+
+## Univariate CAViaR Model Specifications
+
+However, work needed to be done to align the diffusion index model with the CAViaR model, which is defined below. The following variables are required for use in the CAViaR model. For ease of notation, these are sourced directly from the Engle and Manganelli 2004 CAViaR paper [@Engle2004], with some added description:
+
+- $(y_t)_{t=1}^T$ is a "vector of portfolio returns"
+- $\theta$ is the "probability associated with VaR" (a 5% VaR would mean $\theta = 0.05$)
+- $\boldsymbol{x_t}$ is a "vector of time $t$ observable variables"
+- $f_t(\boldsymbol{\beta}) \equiv f_t(\boldsymbol{x_{t-1}, \boldsymbol{\beta_\theta}})$ is the "time $t \theta$ quantile of the distribution of portfolio returns formed at time $t-1$"
+
+## Univariate CAViaR Model Specifications
+
+The authors then describe a "generic CAViaR specification" as follows:
+
+$$
+f_t(\boldsymbol{\beta}) = \beta_0 + \sum_{i=1}^q \beta_i f_{t-1}(\boldsymbol{\beta}) + \sum_{j=1}^r \beta_j l(\boldsymbol{x_{t-j}})
+$$
+
+## Univariate CAViaR Model Specifications
+
+
+= What is interesting about the general setup is that there are two main components to the model - lagged observed variables (represented by $l$) and lagged values of unknown parameters, which in the specification below is used as moving average terms. 
+- As such, it is reasonable to generalize the specifications below as nonlinear ARMA models where $y_{t-1}$ terms refer to previous returns, whereas $f_{t-1}(\beta_1)$ terms refer to previous predictions.
+
+## Adaptive CAViaR Model
+
+Consider the following model:
+
+$$
+f_t(\beta_1) = f_{t-1}(\beta_1) + \beta_1\left[\left(1+ \exp(G[y_{t-1} - f_{t-1}(\beta_1)])  \right)^{-1} - \theta \right] 
+$$
+
+Following Engle and Manganelli's 2004 paper, we choose $G = 10$, so that is what is used in the results section of this paper. The authors state the reason for the seemingly arbitrary choice is that while "the parameter G itself could be estimated; however, this would go against the spirit of this model, which is simplicity". Previous sensitivity analysis showed that running the adaptive model with $G = 5$ did not materially affect the VaR predictions - the accuracy was not changed. While this model is nonlinear in G and total scale invariance in $G$ would be surprising given the nonlinear relationship, the fact that the other fitted parameters likely adjusted is not surprising.
+
+## Symmetric Absolute Value CAViaR Model
+
+Below is the symmetric absolute value CAViaR model:
+
+$$
+f_t(\boldsymbol{\beta}) = \beta_1 + \beta_2f_{t-1}(\boldsymbol{\beta}) + \beta_3|y_{t-1}|.
+$$
+
+## Asymmetric Slope CAViaR Model
+
+Below is the asymmetric slope CAViaR model:
+
+$$
+f_t(\boldsymbol{\beta}) = \beta_1 + \beta_2f_{t-1}(\boldsymbol{\beta}) + \beta_3(y_{t-1})^+ + \beta_4(y_{t-1})^-.
+$$
+
+## Indirect GARCH (1,1) CAViaR Model
+
+Below is the Indirect GARCH (1,1) model:
+
+$$
+f_t(\boldsymbol{\beta}) = (\beta_1 + \beta_2f_{t-1}^2(\boldsymbol{\beta}) + \beta_3y_{t-1}^2)^{1/2}.
+$$
+
+## Literature Cited

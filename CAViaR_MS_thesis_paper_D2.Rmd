@@ -2,18 +2,16 @@
 title: "Multivariate CAViaR"
 subtitle: "An Insightful Approach to Risk Modeling"
 author: "Steven Moen's M.S. Thesis"
-date: "Sunday, May 10th, 2020"
+date: "Tuesday, May 12th, 2020"
 output:
   pdf_document: default
   html_notebook: default
 bibliography: thesis_bibliography.bib
 link-citations: yes
-
 ---
 
 ```{r global_options, include=FALSE}
-knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
-                      echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/', echo=FALSE, warning=FALSE, message=FALSE, cache = TRUE)
 ```
 
 # Abstract
@@ -24,17 +22,86 @@ This thesis builds upon previous literature for modeling value-at-risk (defined 
 
 When modeling financial time series, simply considering the mean and the variance is insufficient for an accurate depiction of the returns - stock returns are well-known for having fat tails and are difficult to model using a normal distribution [@Fama1965]. In fact, modeling a 1% or a 5% quantile of daily returns is a better way to understand and predict what happens on the worst trading days and to give a clearer picture of what might happen during a downturn. Indeed, finance theory suggests that a primary reason why the S&P 500, which is a market-capitalization weighted index composed of the 500-largest publicly traded companies in the United States, has earned a 6.8% inflation-adjusted pre-tax return with dividend reinvestment from January 1871 through April 2020 [@PK2019] is because of the risk of a significant downturn. Kerry Pechter at Forbes describes it as a premium for the fact that "stocks are riskier" and "more prone to price fluctuations in the short run" compared to lower risk investments [@Pechter2020]. A portfolio manager must indeed consider the long-run picture; a small difference in the annual rate of return can make an enormous difference in the ending value of investments. However, focusing entirely on long-run value generation is not the only consideration a prudent manager ought to make. While forecasting stock returns in the long-run is challenging, the performance of indices such as the S&P 500, despite seemingly existential threats such as the World Wars and the Great Depression, does give some confidence to investors who try to focus on long-run value generation. Ignoring the short-run reminds one of John Maynard Keynes' famous maxim that the "long run is a misleading guide to current affairs" because "in the long run we are all dead" [@Keynes1923], and moreover, the short-run impact of a strategy is often more difficult to understand than the long-run results, and potentially more precarious. An investment manager using financial leverage to magnify returns (positive or negative) could be left in dire straits if their investments fell rapidly, despite a sound long-run strategy.
 
-While there are other ways to understand and measure downside risk, a commonly accepted method is using value-at-risk (VaR). The metric is understood as follows: a one-day 1% VaR of -10 million dollars for a portfolio means that the portfolio will lose at least 10 million of its value on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies in the United States, the United Kingdom, and Europe [@Holton2014].
+While there are other ways to understand and measure downside risk, a commonly accepted method is using value-at-risk (VaR). The metric is understood as follows: a one-day 1% VaR of -10 million dollars for a portfolio means that the portfolio will lose at least 10 million of its value on the 1% worst trading days. A major advantage of VaR is that it distills a distribution of returns into one number. As such, VaR is often used in stress testing by regulatory agencies in the United States, the United Kingdom, and Europe [@Holton2014]. 
 
+A popular approach to modeling VaR called RiskMetrics [@Longerstaey1996] was introduced by J.P. Morgan in 1994 and re-relased in 1996. The model assumed that a "portfolio or any asset's returns follow a normal distribution over time" and used this along with the "variance-covariance method" to calculate VaR [@Investopedia2019]. While this was certainly a step forward at the time, perhaps the model's greatest downfall is the pretense of knowledge that modeling the distribution of returns in entirety is possible. The elegant simplicity of using a normal distribution is appealing - only having to estimate the mean and the variance to get a universal picture of returns is certainly appealing, and perhaps necessary in a time of comparatively limited computing power. 
 
-
-Many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation [@Richardson2005]. A popular approach to modeling VaR called RiskMetrics was introduced by J.P. Morgan in 1994 and upgraded in 1996... [??? - FINISH]
-
-According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” [@Engle2004]. They propose a framework called CAViaR that directly forecasts the VaR quantile using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions [@Portnoy1991].
+Having said that, modeling the big picture while making clear assumptions about the nature of returns has its' perks, and is perhaps adventagous over altenatives for modeling VaR. Indeed, many of the approaches for modeling VaR rely on a semiparametric or a nonparametric historical simulation [@Richardson2005]. According to Robert Engle and Simone Manganelli in a 2004 paper, these methods are usually chosen for “empirical justifications rather than on sound statistical theory” [@Engle2004]. They propose a framework called CAViaR that directly forecasts the VaR quantile using a conditional autoregressive quantile specification. This approach builds upon the statistical literature that extends linear quantile models to settings amenable to financial modeling, such as with heteroskedastic and nonstationary error distributions [@Portnoy1991].
 
 # Methods Used
 
-A common problem in statistical analysis occurs when a training sample is significantly different from that of the test sample. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Procter & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the second quarter of 2004, but PG was fairly stable. How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
+The appeal of this model is that it combines the crisp statistical assumptions with the flexibility required to model financial returns. However, the model still runs into issues when a training sample is totally unrepresentative of the testing period - a common problem in statistical analysis. Initial motivations for this paper involved analyzing two stocks - Amazon (ticker: AMZN) and Proctor & Gamble (ticker: PG) and their performance during the Great Recession (specifically, the last 200 trading days of 2008). A relevant question of a financial institution would understandably be how their risk model performed during 2008, a highly volatile period which was driven by the "most severe financial crisis since the Great Depression", according to Gary Becker [@Becker2008], a Nobel-prize winning economist. Interestingly, the univariate CAViaR forecast for Amazon was fairly accurate whereas the forecast for PG was not. One reason for this could be the fact that a stock like Amazon was highly volatile during the training sample, which included return data starting from the second quarter of 2004, but PG was fairly stable. How would it be possible for a univariate model such as CAViaR, that does not explicitly account for other factors, to forecast well? What if a volatile stock such as AMZN was included into the forecast for PG - would it improve the prediction?
+
+```{r}
+# Read in relevant libraries
+library(microbenchmark)
+library(data.table)
+library(quantmod)
+library(ggplot2)
+library(tseries)
+library(zoo)
+library(magrittr)
+library(dplyr)
+library(kableExtra)
+library(formattable)
+library(quantreg)
+library(MTS)
+library(plot3D)
+library(citr)
+library(formattable)
+
+
+# Set up working directory
+# setwd("~/Documents/GitHub/CaviaR")
+
+# source('caviar_SM.R')
+source('~/Documents/GitHub/CaviaR/caviar_SM.R')
+```
+
+```{r}
+# Compare the accuracy of the model runs
+acc_df = as.data.frame(matrix(0, nrow =4, ncol = 2))
+rownames(acc_df) <- c("VaR Exceeded", "VaR Not Exceeded", "VaR Break Rate", "Theoretical VaR")
+colnames(acc_df) <- c("AMZN", "PG")
+
+# Let's create graphs for the Amazon data
+for (i in 1){
+  # Export the data
+  amzn_dat <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/amzn_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  print(plot.xts(amzn_dat[,1:2], col = c("red", "black"), lty = c(2,1), main = paste0("Log Return from AMZN Adj. Close vs. Fcst. VaR, Run ", i),grid.col = NA, legend.loc = "bottomleft"))
+}
+
+# Calculate the AMZN error
+amzn_breach = ifelse(amzn_dat$Act_Return > amzn_dat$Fcst_VaR, 0, 1)
+# Put the data into a data frame
+acc_df[1,1] = sum(amzn_breach)
+acc_df[2,1] = length(amzn_breach) - sum(amzn_breach)
+acc_df[3,1] = sum(amzn_breach)/length(amzn_breach)
+acc_df[4,1] = 0.01
+
+# Let's create graphs for the PG data
+for (i in 1){
+  # Import the data
+  pg_dat <- as.xts(read.csv.zoo(file=paste0("~/Documents/GitHub/CAViaR/PG_result_",i, ".csv"), 
+                                header=TRUE, as.is = TRUE))
+  print(plot.xts(pg_dat[,1:2], col = c("red", "black"), lty = c(2,1), main = paste0("Log Return from PG Adj. Close vs. Fcst. VaR, Run Number ", i),grid.col = NA, legend.loc = "bottomleft"))
+}
+
+# Calculate the PG error
+pg_breach = ifelse(pg_dat$Act_Return > pg_dat$Fcst_VaR, 0, 1)
+# Put the data into a data frame
+acc_df[1,2] = sum(pg_breach)
+acc_df[2,2] = length(pg_breach) - sum(pg_breach)
+acc_df[3,2] = sum(pg_breach)/length(pg_breach)
+acc_df[4,2] = 0.01
+
+
+acc_df[-(1:2),] %>% kable(caption = "Accuracy of VaR Forecast for PG Over Last 200 Trading Days in 2008", digits = 3) %>% kable_styling(full_width = F) %>% footnote(general = "Tested Using the Symmetric Absolute Value Model")
+
+```
+
+
 
 Thus, the idea of combining stocks into a multivariate setting to capture correlations and better forecast risk was formed. A natural choice appeared to be the diffusion index model, originally developed by Stock and Watson for predicting conditional means [@Stock2002; @Stock2002a]. The model for forecasting the conditional mean is specified below.
 
@@ -80,7 +147,7 @@ $$
 f_t(\beta_1) = f_{t-1}(\beta_1) + \beta_1\left[\left(1+ \exp(G[y_{t-1} - f_{t-1}(\beta_1)])  \right)^{-1} - \theta \right] 
 $$
 
-Following Engle and Manganelli's 2004 paper, we choose $G = 10$, so that is what is used in the results section of this paper. Sensitivity analysis shows that the choice of the G parameter does not widely vary the forecast's accuracy.
+Following Engle and Manganelli's 2004 paper, we choose $G = 10$, so that is what is used in the results section of this paper. The authors state the reason for the seemingly arbitrary choice is that while "the parameter G itself could be estimated; however, this would go against the spirit of this model, which is simplicity". Previous sensitivity analysis showed that running the adaptive model with $G = 5$ did not materially affect the VaR predictions - the accuracy was not changed. While this model is nonlinear in G and total scale invariance in $G$ would be surprising given the nonlinear relationship, the fact that the other fitted parameters likely adjusted is not surprising.
 
 ### Symmetric Absolute Value CAViaR Model
 
@@ -184,7 +251,37 @@ When analyzing real data, it's hard to verify any assumptions exactly, but one t
 
 ## Asymptotic Normality
 
-Also per... [FINISH ???]
+Also per Engle and Manganelli, under the same assumptions required for consistency as well as the assumptions below, there is a guarantee of asymptotic normality:
+
+$$
+\sqrt{T} \boldsymbol{A}_T^{-1/2}\boldsymbol{D}_T (\boldsymbol{\hat{\beta}} - \boldsymbol{\beta}^0) \overset{d}\rightarrow \mathcal{N}(0, \boldsymbol{I})
+$$
+
+where
+
+$$
+\boldsymbol{A}_T \equiv \mathbb{E} \left[T^{-1} \theta (1-\theta) \sum_{t=1}^T \nabla' f_t(\boldsymbol{\beta}^0) \nabla f_t(\boldsymbol{\beta}^0) \right]
+$$
+
+and
+
+$$
+\boldsymbol{D}_T \equiv \mathbb{E} \left[T^{-1}  \sum_{t=1}^T h_t(0|\Omega_t)\nabla' f_t(\boldsymbol{\beta}^0) \nabla f_t(\boldsymbol{\beta}^0) \right]
+$$
+
+There are 4 assumptions listed in the paper required for asymptotic normality to hold. As with the assumptions required for consistency, these seem fairly standard as well:
+
+1. "$f_t (\boldsymbol{\beta})$ is differentiable in $B$ and for all $\boldsymbol{\beta}$ and $\boldsymbol{\gamma}$ in a neighborhood $\nu_0$ of $\boldsymbol{\beta^0}$, such that $||\boldsymbol{\beta} - \boldsymbol{\gamma}|| \leq d$ for $d$ sufficiently small and for all $t$:"
+a. "$||\nabla f_t (\boldsymbol{\beta})|| \leq F(\Omega_t)$, where $F(\Omega_t)$ is some (possibly) stochastic funciton of variables that belong to the information set and $\mathbb{E}(F(\Omega_t)^3) \leq F_0 < \infty$, for some constant $F_0$."
+b. "$||\nabla f_t (\boldsymbol{\beta})- \nabla f_t (\boldsymbol{\gamma})|| \leq M(\Omega_t, \boldsymbol{\beta}, \boldsymbol{\gamma}) = \mathcal{O}(||\boldsymbol{\beta} - \boldsymbol{\gamma}||)$, where $M(\Omega_t, \boldsymbol{\beta}, \boldsymbol{\gamma})$ is some function such that $\mathbb{E}[M(\Omega_t, \boldsymbol{\beta}, \boldsymbol{\gamma})]^2 \leq M_0||\boldsymbol{\beta} - \boldsymbol{\gamma}|| < \infty$ and $\mathbb{E}[M(\Omega_t, \boldsymbol{\beta}, \boldsymbol{\gamma})]F(\Omega_t)] \leq M_1|\boldsymbol{\beta} - \boldsymbol{\gamma}|| < \infty$ for some constants $M_0$ and $M_1$."
+2a. "$h(\epsilon|\Omega_t) \leq N < \infty \text{ } \forall t$, for some constant $N$."
+b. "$h(\epsilon|\Omega_t)$ satisfies the Lipschitz condition $|h_t(\lambda_1 | \Omega_t) - h_t(\lambda_2 | \Omega_t)| \leq L|\lambda_1 - \lambda_2|$ for some constant $L < \infty \text{ } \forall t$."
+3. "The matrices $\boldsymbol{A}_T \equiv \mathbb{E} \left[T^{-1} \theta (1-\theta) \sum_{t=1}^T \nabla' f_t(\boldsymbol{\beta}^0) \nabla \times f_t(\boldsymbol{\beta}^0) \right]$ and $\boldsymbol{D}_T \equiv \mathbb{E} \left[T^{-1}  \sum_{t=1}^T h_t(0|\Omega_t)\nabla' f_t(\boldsymbol{\beta}^0) \times \nabla f_t(\boldsymbol{\beta}^0) \right]$ have the smalles eigenvalues bounded below by a positive constant $T$ for sufficiently large."
+4. "The sequence {$T^{-1/2} \sum_{t=1}^T[\theta - I(y_t < f_t(\boldsymbol{\beta}^0))] \nabla'f_t(\boldsymbol{\beta}^0)$} obeys the central limit theorem.
+
+As with the consistency conditions, these seem reasonable enough - the data considered in this analysis seems well-behaved enough such that these conditions are satisfied.
+
+
 
 # Data Used
 
@@ -228,30 +325,7 @@ In each run, the explanatory variables are lagged to avoid look-ahead bias. All 
 
 # Results
 
-```{r}
-# Read in relevant libraries
-library(microbenchmark)
-library(data.table)
-library(quantmod)
-library(ggplot2)
-library(tseries)
-library(zoo)
-library(magrittr)
-library(dplyr)
-library(kableExtra)
-library(formattable)
-library(quantreg)
-library(MTS)
-library(plot3D)
-library(citr)
-library(formattable)
 
-# Set up working directory
-# setwd("~/Documents/GitHub/CaviaR")
-
-# source('caviar_SM.R')
-source('~/Documents/GitHub/CaviaR/caviar_SM.R')
-```
 
 ```{r}
 # This code below is for use in the CAViaR sections.
@@ -1133,8 +1207,17 @@ pretty_tables = function(data_mat, loss_list, tau, ntest){
   # Add row/column names
   colnames(df) <- colnames(data_mat[,-1])
   rownames(df) <- c("Losses", "VaR Breaks (%)")
+  # Edits on 5.12.2020 - divide the table into 2
+  uv_df = df[,1:4]
+  mv_df = df[,5:8]
+  # print(uv_df)
+  # print(mv_df)
+  # Convert to table
+  print(uv_df %>% kable(caption = paste("Univariate CAViaR Results for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end))))
+  print(mv_df %>% kable(caption = paste("Multivariate CAViaR Results for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end))))
   # Convert to a table
-  df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
+  # df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
+  # cc_df[-(1:2),] %>% kable(caption = "Accuracy of VaR Forecast for PG Over Last 200 Trading Days in 2008", digits = 3) %>% kable_styling(full_width = F) %>% footnote(general = "Tested Using the Symmetric Absolute Value Model")
 }
 ```
 
@@ -1316,15 +1399,22 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
   # Add row/column names
   colnames(df) <- colnames(plot_mat[,-1])
   rownames(df) <- c("Losses", "VaR Breaks (%)")
-  # Convert to a table
-  print(df, digits = 3)
-  # print(formattable(df, digits = 3))
-  # df %>% kable(caption = paste("Comparison of VaR Methods for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
-  # pm_table = pretty_tables(plot_mat, l_list, tau = tau, ntest = ntest)
-  # Print the tables and the plot
-  # print(plot)
-  # print(tables)
-  # print(pm_table)
+  # Edits on 5.12.2020 - divide the table into 2
+  uv_df = df[,1:4]
+  mv_df = df[,5:8]
+  # uv_df
+  # mv_df
+  print(formattable(uv_df))
+  print(formattable(mv_df))
+  # print(uv_df %>% kable(caption = "Accuracy of VaR Forecast for PG Over Last 200 Trading Days in 2008", digits = 3) %>% kable_styling(full_width = F) %>% footnote(general = "Tested Using the Symmetric Absolute Value Model"))
+  # print(mv_df %>% kable(caption = "Accuracy of VaR Forecast for PG Over Last 200 Trading Days in 2008", digits = 3) %>% kable_styling(full_width = F) %>% footnote(general = "Tested Using the Symmetric Absolute Value Model"))
+  # Convert to table
+   # t1 = uv_df %>% kable(caption = paste("Univariate CAViaR Results for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
+  # t2 = mv_df %>% kable(caption = paste("Multivariate CAViaR Results for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end)))
+  # print(t1)
+  # print(t2)
+  # print(uv_df %>% kable(caption = paste("Univariate CAViaR Results for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end))))
+  # print(mv_df %>% kable(caption = paste("Multivariate CAViaR Results for a ", tau*100, "% VaR", sep = ""), digits = 3) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = paste("Calculated using", ntest, "trading days from", as.Date(start), "to", as.Date(end))))
   # Return the xts, the plot, the loss list, and the tables
   return(list(plot_mat))
   # return(list(plot_mat, plot, l_list, tables))
@@ -1337,20 +1427,20 @@ For the sake of brevity, the results with only U.S. ETFs, global ETFs, or bonds 
 
 ### 1% VaR
 
-```{r}
+```{r, results=  'asis'}
 # Call the above function
 v1_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2008_all_etf.csv", 0.01)
 ```
 
 ### 5% VaR
 
-```{r}
+```{r, results=  'asis'}
 v5_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2008_all_etf.csv", 0.05)
 ```
 
 ### 10% VaR
 
-```{r}
+```{r, results=  'asis'}
 v10_2008_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2008_all_etf.csv", 0.10)
 ```
 
@@ -1360,21 +1450,21 @@ The univariate CAViaR models significantly outperform the multivariate model, pa
 
 ### 1% VaR
 
-```{r}
+```{r, results=  'asis'}
 # Call the above function
 v1_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2010_all_etf.csv", 0.01)
 ```
 
 ### 5% VaR
 
-```{r}
+```{r, results=  'asis'}
 # Call the above function
 v5_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2010_all_etf.csv", 0.05)
 ```
 
 ### 10% VaR
 
-```{r}
+```{r, results=  'asis'}
 # Call the above function
 v10_2010_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2010_all_etf.csv", 0.10)
 ```
@@ -1385,19 +1475,19 @@ The multivariate forecast is largely in line with the univariate CAViaR model. G
 
 ### 1% VaR
 
-```{r}
+```{r, results=  'asis'}
 v1_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2014_all_etf.csv", 0.01)
 ```
 
 ### 5% VaR
 
-```{r}
+```{r, results=  'asis'}
 v5_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2014_all_etf.csv", 0.05)
 ```
 
 ### 10% VaR
 
-```{r}
+```{r, results=  'asis'}
 v10_2014_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2014_all_etf.csv", 0.10)
 ```
 
@@ -1407,19 +1497,19 @@ As with the 2010 results, the multivariate and univariate forecasts are very sim
 
 ### 1% VaR
 
-```{r}
+```{r, results=  'asis'}
 v1_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_1pc_2016_all_etf.csv", 0.01)
 ```
 
 ### 5% VaR
 
-```{r}
+```{r, results=  'asis'}
 v5_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_5pc_2016_all_etf.csv", 0.05)
 ```
 
 ### 10% VaR
 
-```{r}
+```{r, results=  'asis'}
 v10_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_all_ETF_runs/","var_10pc_2016_all_etf.csv", 0.10)
 ```
 
