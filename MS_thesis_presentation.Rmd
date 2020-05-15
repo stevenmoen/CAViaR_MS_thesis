@@ -193,7 +193,7 @@ There are two key equations:
 ## Diffusion Index Model
 
 - To model the data, principal component analysis is performed on the covariates (described later) to obtain an estimate of $\boldsymbol{f_t}$.
-- When modeling the conditional mean, the $\boldsymbol{\beta}$ coefficients are estimated using ordinary least squares, however in the specification below they are not. 
+- When modeling the conditional mean, the $\boldsymbol{\beta}$ coefficients are estimated using ordinary least squares.
 - A specific formulation mentioned in the textbook is as follows, where the individuals diffusion indices are given by $f_it$, and the goal is a one-step ahead prediction of $y_t$:
 
 $$
@@ -202,7 +202,7 @@ $$
 
 ## Univariate CAViaR Model Specifications
 
-However, work needed to be done to align the diffusion index model with the CAViaR model, which is defined below. The following variables are required for use in the CAViaR model. For ease of notation, these are sourced directly from the Engle and Manganelli 2004 CAViaR paper [@Engle2004], with some added description:
+Work needed to be done to align the diffusion index model with the CAViaR model, which is defined below. The following variables are required for use in the CAViaR model. For ease of notation, these are sourced directly from the Engle and Manganelli 2004 CAViaR paper [@Engle2004], with some added description:
 
 - $(y_t)_{t=1}^T$ is a "vector of portfolio returns"
 - $\theta$ is the "probability associated with VaR" (a 5% VaR would mean $\theta = 0.05$)
@@ -268,7 +268,7 @@ $$
 
 ## Multivariate CAViaR Model Specifications
 
-- Second, in some of the specifications below, there are lagged return variables. - This is similar to the univariate CAViaR specification, though there is often more than 1 lag as in the univariate model - there are $p$ lags in the dataset. 
+- Second, in some of the specifications below, there are lagged return variables. This is similar to the univariate CAViaR specification, though there is often more than 1 lag as in the univariate model - there are $p$ lags in the dataset. 
 - Third, in all of the specifications below, there are $m$ diffusion indices used in each model lagged by one time step to avoid look-ahead bias.
 
 
@@ -311,7 +311,7 @@ $$
 
 - After doing this, the last 250 data points are reserved as test data, and the 250 data points before that are used as a validation set. 
 - Measured by the loss function written out below, the values of $p$ and $m$ that minimize losses are chosen and the optimal model is refit over both the training and the validation data combined and then evaluated on the test data. 
-- Note that there is an optimal model is chosen for each of the four multivariate CAViaR specifications described above, so there are 4 optimal sets of $p$ and $m$ chosen for each set of model. 
+- Note that there is an optimal model chosen for each of the four multivariate CAViaR specifications described above, so there are 4 optimal sets of $p$ and $m$ chosen for each set of model. 
 - Thus, there are 8 models compared on the test data - 4 univariate CAViaR models and 4 multivariate CAViaR models.
 
 ## Fitting the Models
@@ -329,7 +329,7 @@ $$
 
 ## Theoretical Guarantees of Consistency and Asymptotic Normality
 
-- The paper states that the model specified by:
+The paper states that the model specified by:
 
 $$
 y_t = f(y_{t-1}, \boldsymbol{x}_{t-1},..., y_1, \boldsymbol{x}_1; \boldsymbol{\beta}^0) + \epsilon_{t \theta} [Quant_\theta (\epsilon_{t \theta} | \Omega_t) = 0]
@@ -1543,7 +1543,7 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
   end = index(plot_mat)[nrow(plot_mat)]
   # Add row/column names
   colnames(df) <- colnames(plot_mat[,-1])
-  rownames(df) <- c("Losses", "VaR Breaks (%)")
+  rownames(df) <- c("Losses", "VaR Break Rate")
   # Edits on 5.12.2020 - divide the table into 2
   mv_df = df[,1:4]
   uv_df = df[,5:8]
@@ -1900,6 +1900,26 @@ v10_2016_alletf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_t
 
 - Because of the flexibility of the model, it is entirely possible that a whole gamut of variables could be tossed in and backtested to when "changepoints" occurred. 
 - Additional future work involves confirming the theoretical guarantees on the parameters in the multivariate CAViaR model. One advantage of both the diffusion index model and the CAViaR model is that both have theorems about asymptotic normality and consistency.
+
+## Conclusions and Future Work - Changepoint Detection Algorithm
+
+- One advantage of the diffusion index model is the ability to detect changepoints underlying factors, which can serve as a proxy for economic changes.
+- Below is a method that can be explored in future work:
+
+1. Using a set of ETFs, perform PCA at $t$ many points for $m$ many factors - $f_{j,t}$
+2. At each time point, add the vectors together to get a resultant: $\sum_{j=1}^m f_{j,t} = r_t$
+3. Calculate the resultants at each time point $t$, giving $r_1, r_2, ..., r_T$.
+4. Starting with a reference point $t_0$ with associated $r_{t0}$ resultant, measure the angle between resultants calculated at different time steps $r_{tk}$
+
+$$
+\theta = \arccos \left(\frac{r_{t0} \cdot r_{tk}}{||r_{t0}||  ||r_{tk}||} \right)
+$$
+
+## Conclusions and Future Work - Changepoint Detection Algorithm
+
+- The angle $\theta$ could be plotted over time.
+- Using Monte Carlo simulation (because PCA transformations are highly non-linear and thus are difficult to calculate an analytical density from), p-values could be calculated to detect a changepoint in the underlying factors.
+
 
 ## Additional Results
 

@@ -1241,7 +1241,7 @@ cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_
 #' @export - a plot and tables
 #'
 #' @examples - test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
-var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")){
+var_input_disp_OLD = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")){
 # var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive")){
   # Import data
   plot_mat = read.csv(paste0(file_path,filename), sep = ",", header = T, stringsAsFactors = FALSE)
@@ -1279,6 +1279,74 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
 }
 ```
 
+```{r}
+#' A function to input the VaR files, plot them and generate tables
+#'
+#' @param file_path - file path to use
+#' @param filename - name of the file
+#' @param tau - quantile to use
+#' @param resp_var - response variable to use in the plot
+#' @param ntest - number of test points
+#' @param cn_input - column name inputs
+#'
+#' @return - a list of the xts file, the plot, the loss list, and tables
+#' @export - a plot and tables
+#'
+#' @examples - test = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/","var_1pc_2008_us_etf.csv", 0.01)
+var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 250, cn_input = c("SPY", "MV CAViaR", "MV CAViaR + AR", "MV CAViaR + SAV", "MV CAViaR + AS", "SAV", "Abs. Slope", "Ind. GARCH", "Adaptive"), print_graph = 1, print_mv_table = 1, print_uv_table = 1, print_opt_param =1){
+  # Import data
+  plot_mat = read.csv(paste0(file_path,filename), sep = ",", header = T, stringsAsFactors = FALSE)
+  # Fix date format
+  plot_mat$Index = as.Date(plot_mat$Index)
+  # Convert to an xts
+  plot_mat = xts(plot_mat[,-1], order.by = plot_mat[,1])
+  # Fix column names
+  colnames(plot_mat) <- cn_input
+  # Plot everything
+  if (print_graph == 1){
+    plt_data(plot_mat, tau = tau, resp_var = resp_var, ntest = ntest)
+  }
+  # Calculate losses
+  l_list = gen_loss_test(plot_mat, tau = tau)
+  # Put into tables
+  df = as.data.frame(rbind(l_list[[1]], l_list[[2]]))
+  # Calculate inital and ending time value
+  start = index(plot_mat)[1]
+  end = index(plot_mat)[nrow(plot_mat)]
+  # Add row/column names
+  colnames(df) <- colnames(plot_mat[,-1])
+  rownames(df) <- c("Losses", "VaR Break Rate")
+  # Edits on 5.12.2020 - divide the table into 2
+  mv_df = df[,1:4]
+  uv_df = df[,5:8]
+  if (print_mv_table == 1){
+    print(knitr::kable(mv_df, digits = 3), format = 'pandoc')
+    cat("\n")
+  }
+  if (print_uv_table == 1){
+    print(knitr::kable(uv_df, digits = 3), format = 'pandoc')
+    cat("\n")
+  }
+  # Print the optimal parameters
+  if (print_opt_param == 1){
+    # Import the data frame
+    opt_pm = read.csv(paste0(file_path,paste0(substr(filename, 1, nchar(filename)-4),"_pm.csv")), sep = ",", header = T, stringsAsFactors = FALSE)
+    opt_pm <- opt_pm[,-1]
+    # Assign names
+    rownames(opt_pm) <- cn_input[2:5]
+    colnames(opt_pm) <- c("Optimal M", "Optimal P")
+    # Fix the row and column names
+    # Format nicely
+    # print(opt_pm %>% kable(caption = "Optimal Number of Diffusion Indices (m) and Lags (p) for Different Models", digits = 0) %>% kable_styling("striped", full_width = F) %>% kable_styling() %>% footnote(general = "The MV CAViaR model doesn't have an optimal value for p because there are no AR lags in the model")
+    print(knitr::kable(opt_pm), format = 'pandoc')
+  #   cat("\n")
+  }
+  # Return the xts, the plot, the loss list, and the tables
+  return(list(plot_mat))
+  # return(list(plot_mat, plot, l_list, tables))
+}
+```
+
 # 5.10.2020 Problem Solving
 
 ```{r}
@@ -1301,6 +1369,26 @@ var_input_disp = function(file_path, filename, tau, resp_var = "SPY", ntest = 25
 # v1_08_usetf_bigtest = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XLF", "XLB", "XLE"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 9, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_US_ETF_runs/", filename = "var_1pc_2008_us_etf.csv", pm_filename = "var_1pc_2008_us_etf_pm", ms_filename = "var_1pc_2008_us_etf_ms", uv_list = v1_2008_usetf[[1]])
 ```
 
+# Problem Solving on 5.14.2020
+
+```{r, results=  'asis'}
+# Import files for use below
+v1_2008_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2008_glob_etf.csv", 0.01, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+v1_2010_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2010_glob_etf.csv", 0.01, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+v1_2014_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2014_glob_etf.csv", 0.01, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+v1_2016_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_1pc_2016_glob_etf.csv", 0.01, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+
+```
+
+```{r, results=  'asis'}
+# Import files for use below
+v5_2008_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2008_glob_etf.csv", 0.05, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+v5_2010_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2010_glob_etf.csv", 0.05, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+v5_2014_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2014_glob_etf.csv", 0.05, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+v5_2016_globetf = var_input_disp("/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/","var_5pc_2016_glob_etf.csv", 0.05, print_graph = 0, print_mv_table = 0, print_uv_table = 0, print_opt_param =0)
+
+```
+
 
 ## 2008 Ending
 
@@ -1316,9 +1404,14 @@ var_10pc_2008_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XL
 ### Global ETFs
 
 ```{r}
+# v5_2008_globetf[[1]]
+```
+
+
+```{r}
 # 1%, 5%, 10% VaR - 2008 - 2nd set of predictors
 var_1pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2008_glob_etf.csv", pm_filename = "var_1pc_2008_glob_etf_pm", ms_filename = "var_1pc_2008_glob_etf_ms", uv_list = v1_2008_globetf[[1]])
-var_5pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2008_glob_etf.csv", pm_filename = "var_1pc_2008_glob_etf_pm", ms_filename = "var_1pc_2008_glob_etf_ms", uv_list = v5_2008_globetf[[1]])
+var_5pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2008_glob_etf.csv", pm_filename = "var_5pc_2008_glob_etf_pm", ms_filename = "var_5pc_2008_glob_etf_ms", uv_list = v5_2008_globetf[[1]])
 var_10pc_2008_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2008_glob_etf.csv", pm_filename = "var_10pc_2008_glob_etf_pm", ms_filename = "var_10pc_2008_glob_etf_ms", uv_list = v10_2008_globetf[[1]])
 ```
 
@@ -1363,7 +1456,7 @@ var_10pc_2010_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XL
 ```{r}
 # 1%, 5%, 10% VaR - 2010 - 2nd set of predictors
 var_1pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2010_glob_etf.csv", pm_filename = "var_1pc_2010_glob_etf_pm", ms_filename = "var_1pc_2010_glob_etf_ms", uv_list = v1_2010_globetf[[1]])
-var_5pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2010_glob_etf.csv", pm_filename = "var_1pc_2010_glob_etf_pm", ms_filename = "var_1pc_2010_glob_etf_ms", uv_list = v5_2010_globetf[[1]])
+var_5pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2010_glob_etf.csv", pm_filename = "var_5pc_2010_glob_etf_pm", ms_filename = "var_5pc_2010_glob_etf_ms", uv_list = v5_2010_globetf[[1]])
 var_10pc_2010_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2006-01-01", end_date = "2010-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2010_glob_etf.csv", pm_filename = "var_10pc_2010_glob_etf_pm", ms_filename = "var_10pc_2010_glob_etf_ms", uv_list = v10_2010_globetf[[1]])
 ```
 
@@ -1407,7 +1500,7 @@ var_10pc_2014_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XL
 ```{r}
 # 1%, 5%, 10% VaR - 2014 - 2nd set of predictors
 var_1pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2014_glob_etf.csv", pm_filename = "var_1pc_2014_glob_etf_pm", ms_filename = "var_1pc_2014_glob_etf_ms", uv_list = v1_2014_globetf[[1]])
-var_5pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2014_glob_etf.csv", pm_filename = "var_1pc_2014_glob_etf_pm", ms_filename = "var_1pc_2014_glob_etf_ms", uv_list = v5_2014_globetf[[1]])
+var_5pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2014_glob_etf.csv", pm_filename = "var_5pc_2014_glob_etf_pm", ms_filename = "var_5pc_2014_glob_etf_ms", uv_list = v5_2014_globetf[[1]])
 var_10pc_2014_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2010-01-01", end_date = "2014-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2014_glob_etf.csv", pm_filename = "var_10pc_2014_glob_etf_pm", ms_filename = "var_10pc_2014_glob_etf_ms", uv_list = v10_2014_globetf[[1]])
 ```
 
@@ -1453,7 +1546,7 @@ var_10pc_2016_us_etf = cav_simul(c("XLU", "XLP", "XLV", "XLK", "XLY", "XLI", "XL
 ```{r}
 # 1%, 5%, 10% VaR - 2016 - 2nd set of predictors
 var_1pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10, tau = 0.01, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_1pc_2016_glob_etf.csv", pm_filename = "var_1pc_2016_glob_etf_pm", ms_filename = "var_1pc_2016_glob_etf_ms", uv_list = v1_2016_globetf[[1]])
-var_5pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2016_glob_etf.csv", pm_filename = "var_1pc_2016_glob_etf_pm", ms_filename = "var_1pc_2016_glob_etf_ms", uv_list = v5_2016_globetf[[1]])
+var_5pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.05, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_5pc_2016_glob_etf.csv", pm_filename = "var_5pc_2016_glob_etf_pm", ms_filename = "var_5pc_2016_glob_etf_ms", uv_list = v5_2016_globetf[[1]])
 var_10pc_2016_glob_etf = cav_simul(c("JXI", "KXI", "IXJ", "IXP", "IXN", "RXI", "EXI", "IXG", "MXI", "IXC"), resp_var = "SPY", start_date = "2012-01-01", end_date = "2016-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 10, low_p = 1, high_p = 10,tau = 0.10, print_mdl = 1, print_mp = 1, path = "/Users/stevenmoen/Documents/GitHub/CAViaR_MS_thesis/Data_Export/SPY_glob_ETF_runs/", filename = "var_10pc_2016_glob_etf.csv", pm_filename = "var_10pc_2016_glob_etf_pm", ms_filename = "var_10pc_2016_glob_etf_ms", uv_list = v10_2016_globetf[[1]])
 ```
 

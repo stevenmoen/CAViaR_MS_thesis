@@ -1,5 +1,5 @@
 "","Optimal m","Optimal p"
-"MV CAViaR",1,NA
-"MV CAViaR + AR",1,1
-"MV CAViaR + SAV",6,1
-"MV CAViaR + AS",2,2
+"MV CAViaR",6,NA
+"MV CAViaR + AR",10,7
+"MV CAViaR + SAV",10,5
+"MV CAViaR + AS",8,10
