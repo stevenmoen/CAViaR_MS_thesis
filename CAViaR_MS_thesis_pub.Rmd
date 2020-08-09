@@ -1834,6 +1834,82 @@ $$
 
 The angle $\theta$ could be plotted over time, and changepoints could be detected using Monte Carlo simulation. The reason for using Monte Carlo simulation is that Principal Component Analysis transformations are non-linear, and so calculating an analytical density from the transformed data is intractable. Moreover, the data fed into the PCA transformation is non-normal, which further supports the notion of using Monte Carlo simulation to establish reasonable estimates of uncertainty for detected changepoints.
 
+```{r}
+# cav_simul(c("DIS", "GE", "IBM", "MMM", "XOM"), resp_var = "PG", start_date = "2004-01-01", end_date = "2008-12-31", nval = 250, ntest = 250, low_m = 1, high_m = 5, tau = 0.01, uv_list = uv_cav_list)
+# cav_simul = function(symbol_list, resp_var, compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "1900-01-01", end_date = Sys.Date(), nval, ntest, tau, low_m = 1, high_m, low_p = 1, high_p, uv_list = NULL, no_run = c(0,0,0,0), na_interp = TRUE, print_mdl = 0, print_mp = 0, lag_pred = 1, rowname = NULL, export_csv = 1, path, filename){
+  # Select data parameters, pull the data, and percent change the data
+  df = diff_index_df(symbol_list = c("DIS", "GE", "IBM",  "XOM"), resp_var = "SPY", compl_case = 1, adj_close = 1, resp_adj_close = 1, start_date = "2004-01-01", end_date = "2008-12-31", lag_pred = 1)
+df
+  # Take the percent change of the data
+  pc_df = pc_diff_index(df)
+```
+
+
+```{r}
+#' Below is the modified diffusion index code.
+#'
+#' @param y - response variable
+#' @param x - predictor variables
+#' @param orig - forecast origin
+#' @param m - number of diffusion indexes used
+#' @param tau - VaR level to use; must be between 0 and 1
+#' @param end - specifies an alternate ending value
+#' @param print_mdl - print the model summary and the MSE
+#'
+#' @return - returns a list of variables for use in the diffusion index
+#' @export
+#'
+#' @examples
+changepoint_detect = function (x, m) {
+  # Converts the response variables into a matrix
+  if (!is.matrix(x)) 
+      x = as.matrix(x)
+  # nT is number of t time-steps
+  nT = dim(x)[1]
+  # Add a line to establish the number of data points used in the test.
+  if (is.null(end) != TRUE){
+    nT = end
+  }
+  # k is the number of diffusion indices used
+  k = dim(x)[2]
+  # Sanity checks to ensure that the origin isn't past the number of time points
+  # if (orig > nT) 
+      # orig = nT
+  # Makes sure that there aren't more predictors than there variables in the dataset
+  if (m > k) 
+      m = k
+  # Makes sure there are at least some variables
+  if (m < 1) 
+      m = 1
+  # Subdivides the dataframe
+  # x1 = x[1:orig, ]
+  # Calculates means of each row
+  me = apply(x, 2, mean)
+  # Calculates standard deviations of each column
+  se = sqrt(apply(x, 2, var))
+  # Creates a matrix x1, which normalizes all the columns. 
+  # This may be an issue since it assumes that the distribution is sufficiently described by the first two moments
+  # x1 = x
+  for (i in 1:k) {
+      x[, i] = (x[, i] - me[i])/se[i]
+  }
+  V1 = cov(x[1:orig, ])
+  # Performs an eigen decomposition
+  m1 = eigen(V1)
+  # Selects eigenvalues
+  sdev = m1$values
+  # Selects eigenvectors
+  M = m1$vectors
+  return(M)
+}
+```
+
+```{r}
+
+```
+
+
+
 # Acknowledgements
 
 Early in my academic career, I grew to respect the University of Chicago as a truly special institution because of its unparalleled reputation in the field of Financial Econometrics and Statistics. I knew that when I received an offer to study as a master's student that I could not turn it down. Despite all of the late nights working in the Regenstein library, in the John Crerar library, or in Jones, I can truly say that it has been the time of my life earning a master's degree in Statistics at UChicago. Earning an M.S. degree is not the conclusion of my academic journey; I will be pursuing a Ph.D. in Statistics at the University of Wisconsin-Madison beginning in the fall of 2020. While I will be leaving Chicago this summer, I hope to maintain many of the connections that I have formed as a student. I have learned during this present crisis that an academic community doesn't require proximity, and that is good news. I have also learned during my time here that the community at the University of Chicago is bound together by tireless, talented individuals who believe that above all else, often at great personal cost, that they have a commitment to find and share the truth with the world around them. And so let human life be enriched, as our motto goes.
