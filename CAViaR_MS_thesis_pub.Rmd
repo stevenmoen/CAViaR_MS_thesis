@@ -512,7 +512,7 @@ diff_index_df = function(symbol_list, resp_var = "SPY", compl_case = 1, adj_clos
     # New code for 4.16.2020 - lag the explanatory variables
     if (lag_pred == TRUE){
       # Lag the explanatory variables by 1
-      lag_exp = lag(expl_cl, 1)
+      lag_exp = stats::lag(expl_cl, 1)
       # Append the first lag to the data frame
       diff_df = merge(diff_df, lag_exp, join = "left", fill = NA)
     } else{
