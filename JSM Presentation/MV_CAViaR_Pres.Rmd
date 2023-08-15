@@ -1,0 +1,190 @@
+---
+title: "Multivariate CAViaR and Extensions"
+author: "Steven Moen"
+date: "Wednesday, August 9th, 2023"
+output: beamer_presentation
+bibliography: stat_771_project_bib_v2.bib
+link-citations: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, cache = TRUE)
+```
+
+
+## Roadmap
+
+* Background: Summarize M.S. thesis
+* Describe extensions and get feedback:
+    + Extension 1: Improve forecast from thesis
+    + Extension 2: Combine predictions between models
+    + Extension 3: Build predictive algorithm, from PCA
+    
+## Executive Summary
+
+* I developed a new risk prediction model that is easy to interpret but needs help with predictive accuracy.
+* I also developed two potentially novel but unproven extensions based on this model that may need a better application.
+
+## Background: What to forecast?
+
+* What should we predict in equity returns?
+* The S&P 500 (largest 500 U.S. stocks) earned ~6.8% pre-tax, post-inflation from 1871-2020
+    + Includes world wars, great depression, stagflation
+    + ``In the long run we are all dead"
+* Short-term gyrations drive long-term performance 
+
+## Background: How to forecast?
+
+* Fully generative vs. fully nonparametric
+    + Fully generative (RiskMetrics)
+    + Fully nonparametric (historical simulation)
+
+<center>
+
+\includegraphics[width=300pt]{modeling_tradeoffs.png}
+
+</center>
+
+## Background: Value-at-Risk
+
+- 1% VaR of -\$10MM = lose \$10MM+ 1 out of 100 days
+    + Boils risk into ``one number"
+    + Commonly used by financial regulators
+
+## Background: What is CAViaR?
+
+- CAViaR = conditional autoregressive value at risk
+    + Developed by Engle and Manganelli in 2004
+- Directly predicts $\alpha$ % quantile
+    + Balances between too little and too much
+- Statistically robust
+    + Builds upon rich methodology literature
+
+## Background: Potential Issues with CAViaR?
+
+- How to incorporate information from other stocks?
+- How can we have clear, explainable results?
+
+## Background: Proposed Extensions as "Multivariate CAViaR"
+
+- Include meaningful ETFs (exchange traded funds)
+    + ETFs avoid issues like bankruptcy & mergers
+- I used mostly sector ETFs (utilities, industrial, energy, etc.)
+- I used SPY (S&P 500 ETF) as a response
+
+## Background: Proposed Extensions as "Multivariate CAViaR"
+
+- Idea: Combine ETFs into principal components at forecast origin (diffusion indices, or DIs)
+    + Builds upon the diffusion index literature from Stock and Watson in 2002
+- Add nonlinear autoregressive (AR) terms from SPY into model
+- 4 configurations of univariate model 
+- 4 configurations of multivariate model 
+
+## Background: Fitting Process
+
+- Take 5 years of SPY returns
+    + ~3 years: Training set
+    + ~1 year: Validation set
+    + ~1 year: Test set
+- Choose number of DIs & AR lags on validation set
+- Evaluate performance of 1%, 5%, and 10% VaR
+- Evaluate in 2008, 2010, 2014, and 2016
+
+## Background: Results
+
+- Results from 2008 were poor
+- Results were comparable in 2010, 2014, and 2016
+
+## Extension 1
+
+- How to improve this forecast?
+
+- One idea: Include MA terms in MV CAViaR
+    + Pro: Likely dramatically improves accuracy
+    + Con: Harder to interpret model
+    + Cons: Harder to fit model
+
+## Extension 2: Motivation
+
+
+<center>
+
+\includegraphics[width=300pt, height = 200pt]{street_map.png}
+
+</center>
+
+## Extension 2: Motivation
+
+
+<center>
+
+\includegraphics[width=300pt]{light_traffic.jpg}
+
+</center>
+
+## Extension 2: Motivation
+
+<center>
+
+\includegraphics[width=300pt]{heavy_traffic.jpg}
+
+</center>
+
+## Extension 2: A Tale of Two Approaches
+
+1. ``Rational" forecast
+    + Day of week, weather, time, etc.
+2. ``Irrational" forecast
+    + Anchor to recent behavior
+
+## Extension 2: Application to Earlier Work
+
+- When multivariate CAViaR dominates, we're in a ``rational" state
+- Otherwise, in a ``irrational" state
+- Find posterior probability of latent state using Hidden Markov Model
+-- Some details omitted (see appendix)
+
+## Extension 2: Application to Earlier Work
+
+- Results are not overly promising, but may require another dataset
+
+## Extension 3: Motivation from PCA
+
+
+<center>
+
+\includegraphics[width=300pt, height = 200pt]{pca_1.png}
+
+</center>
+
+## Extension 3: Motivation from PCA
+
+
+<center>
+
+\includegraphics[width=300pt]{pca_2.png}
+
+</center>
+
+## Extension 3: Calculating Resultants
+
+
+<center>
+
+\includegraphics[width=300pt]{resultant_2.jpeg}
+
+</center>
+
+## Extension 3: Procedure
+
+- Compute the resultant for $t$ points and $m$ vectors
+- Measure the angle between resultants; 90 degrees implies "orthogonal"
+- Results are promising
+
+## Thank you!
+
+## Appendix
+
+
+
+
